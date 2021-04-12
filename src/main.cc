@@ -31,12 +31,22 @@ int main() {
 
   bool added = player_fetcher->AddPlayer("Mikal", "Bridges");
   if (!added) {
-    std::cout << "Couldn't added player to the fetcher batch." << std::endl;
+    std::cout << "Couldn't add player to the fetcher batch." << std::endl;
     return 0;
   }
-  std::cout << "Successfully added player to the fetcher batch." << std::endl;
-  
+  std::cout << "Successfully add player to the fetcher batch." << std::endl;
 
+  PlayerFetcher::PlayerIdentity player_info = {};
+  player_info.first_name = "Mikal";
+  player_info.last_name = "Bridges";
+  const auto &log = player_fetcher->GetPlayerLog(player_info);
+  std::cout << log.player_info.first_name << " " << log.player_info.last_name
+            << " (" << log.player_info.id << ")" << std::endl;
+  std::cout << "Points: " << log.player_log.points
+            << ", Rebounds: " << log.player_log.total_rebounds << std::endl;
+  std::cout << "(" << log.game_info.home_team << ") "
+            << log.game_info.home_score << " - (" << log.game_info.away_team
+            << ") " << log.game_info.away_score << std::endl;
 
   return 0;
 }

@@ -37,7 +37,7 @@ bool PlayerFetcher::AddPlayer(const std::string &fname,
                               const std::string &lname, const int &id,
                               endpoint::Options *options) {
   const auto &used_options =
-      (options != nullptr ? GetDefaultOptions() : *options);
+      (options == nullptr ? GetDefaultOptions() : *options);
   bool added = false;
   if (fname.empty() && lname.empty() && id == -1) {
     return added;
@@ -74,7 +74,7 @@ bool PlayerFetcher::AddPlayer(const std::string &fname,
 // player ids.
 void PlayerFetcher::AddToRoster(std::vector<int> roster,
                                 endpoint::Options *options) {
-  auto used_options = (options != nullptr ? GetDefaultOptions() : *options);
+  auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
   auto it = find_if(player_log_fetches_.begin(), player_log_fetches_.end(),
                     [&](const PlayerLogFetch log_fetch) {
                       return log_fetch.fetch_options == used_options;
@@ -97,20 +97,22 @@ void PlayerFetcher::AddToRoster(std::vector<int> roster,
 }
 
 PlayerFetcher::DailyPlayerLog
-PlayerFetcher::GetPlayerLog(const int &id, endpoint::Options *options) {
-  if (id == -1) {
+PlayerFetcher::GetPlayerLog(PlayerFetcher::PlayerIdentity player,
+                            endpoint::Options *options) {
+  if (player.id == -1) {
     return DailyPlayerLog();
   }
 
-  auto used_options = (options != nullptr ? GetDefaultOptions() : *options);
+  auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
 
   // Check if we already have this player log (with the given options) inside
   // the cache. Avoids doing curl calls everytime.
-  auto id_iter = cache_.find(id);
+  auto id_iter = cache_.find(player.id);
   if (id_iter == cache_.end()) {
     // Do API call to retrieve the daily log.
-    auto daily_player_log = retrieve_daily_player_log(id, &used_options);
-    cache_[id] = std::vector(1, std::make_pair(used_options, daily_player_log));
+    auto daily_player_log = retrieve_daily_player_log(player, &used_options);
+    cache_[player.id] =
+        std::vector(1, std::make_pair(used_options, daily_player_log));
     return daily_player_log;
   } else {
     for (const auto &log_pair : id_iter->second) {
@@ -120,7 +122,7 @@ PlayerFetcher::GetPlayerLog(const int &id, endpoint::Options *options) {
     }
     // This means we have a log (could be multiple) for the given player but not
     // with the given fetch options (e.g. could be for a different date).
-    auto daily_player_log = retrieve_daily_player_log(id, &used_options);
+    auto daily_player_log = retrieve_daily_player_log(player, &used_options);
     id_iter->second.push_back(std::make_pair(used_options, daily_player_log));
     return daily_player_log;
   }
@@ -129,7 +131,7 @@ PlayerFetcher::GetPlayerLog(const int &id, endpoint::Options *options) {
 std::unordered_map<int, PlayerFetcher::DailyPlayerLog>
 PlayerFetcher::GetRosterLog(endpoint::Options *options) {
   std::unordered_map<int, DailyPlayerLog> daily_logs;
-  // auto used_options = (options != nullptr ? GetDefaultOptions() : *options);
+  // auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
   // TODO: Complete this to work with the player_log_fetches_.
   return daily_logs;
 }
@@ -325,11 +327,8 @@ PlayerFetcher::find_player_reference(const nlohmann::json &player_refs,
 }
 
 PlayerFetcher::DailyPlayerLog
-PlayerFetcher::retrieve_daily_player_log(const int &id,
+PlayerFetcher::retrieve_daily_player_log(PlayerFetcher::PlayerIdentity player,
                                          endpoint::Options *options) {
-  PlayerIdentity player = {};
-  player.id = id;
-
   // Construct endpoint url and do curl operation.
   const std::string daily_log_endpoint_url =
       make_base_daily_log_url(options) + make_player_list_url(player);
@@ -342,7 +341,7 @@ PlayerFetcher::retrieve_daily_player_log(const int &id,
 
   // Create the daily player log object by reading the json content response
   // returned by the MySportsFeed endpoint.
-  auto used_options = (options != nullptr ? GetDefaultOptions() : *options);
+  auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
   auto daily_player_logs = construct_player_logs(json_content, &used_options);
   // We should only have on log since we requested only one player id.
   if (daily_player_logs.size() == 1) {

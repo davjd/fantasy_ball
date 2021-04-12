@@ -141,7 +141,7 @@ public:
 
   // Return the daily log for the given player. May utilize a cached copy or do
   // API call.
-  DailyPlayerLog GetPlayerLog(const int &id,
+  DailyPlayerLog GetPlayerLog(PlayerIdentity player,
                               endpoint::Options *options = nullptr);
 
   // Retrieve all the daily logs for the given roster with the specified
@@ -242,7 +242,7 @@ private:
 
   // Retrieves the daily player log from the MySportsFeed endpoint.
   DailyPlayerLog
-  retrieve_daily_player_log(const int &id,
+  retrieve_daily_player_log(PlayerIdentity player,
                             endpoint::Options *options = nullptr);
 
   // Default parameters to the daily player log endpoint.
