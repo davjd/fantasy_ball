@@ -29,17 +29,30 @@ int main() {
 
   std::cout << "Key: " << curl_fetch->Key() << "\n";
 
-  bool added = player_fetcher->AddPlayer("Mikal", "Bridges");
+  PlayerFetcher::PlayerIdentity player_info = {};
+  player_info.first_name = "Mikal";
+  player_info.last_name = "Bridges";
+
+  bool added =
+      player_fetcher->AddPlayer(player_info.first_name, player_info.last_name);
   if (!added) {
     std::cout << "Couldn't add player to the fetcher batch." << std::endl;
     return 0;
   }
   std::cout << "Successfully add player to the fetcher batch." << std::endl;
 
-  PlayerFetcher::PlayerIdentity player_info = {};
-  player_info.first_name = "Mikal";
-  player_info.last_name = "Bridges";
   const auto &log = player_fetcher->GetPlayerLog(player_info);
+
+  char *url = NULL;
+  curl_easy_getinfo(curl_fetch.get(), CURLINFO_EFFECTIVE_URL, &url);
+  std::cout << "Ret: " << curl_fetch->curl_ret() << ", URL: " << url
+            << std::endl;
+
+  if (log.player_info.id < 0) {
+    std::cout << "Couldn't retrieve daily player log. Error: "
+              << log.player_info.id << std::endl;
+    return 0;
+  }
   std::cout << log.player_info.first_name << " " << log.player_info.last_name
             << " (" << log.player_info.id << ")" << std::endl;
   std::cout << "Points: " << log.player_log.points
@@ -47,6 +60,5 @@ int main() {
   std::cout << "(" << log.game_info.home_team << ") "
             << log.game_info.home_score << " - (" << log.game_info.away_team
             << ") " << log.game_info.away_score << std::endl;
-
   return 0;
 }

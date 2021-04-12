@@ -48,7 +48,7 @@ public:
 
 private:
   // Base url for MySportsFeed daily player log endpoint.
-  static const std::string base_url_;
+  static const std::string kBaseUrl;
 
   // NOTE: This class doesn't have ownership of this object.
   CurlFetch *curl_fetch_;

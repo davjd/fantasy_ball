@@ -24,8 +24,8 @@ public:
     std::string img_url;
     std::string position;
 
-    // An id of -1 signifies that an error occured when creating this object and
-    // should be recreated.
+    // A negative id signifies that an error occured when creating this object
+    // and should be recreated.
     int id;
 
     // Reads a single playerReferences json item into the player_identity
@@ -124,6 +124,19 @@ public:
     PlayerIdentity player_info;
     TeamFetcher::GameMatchup game_info;
     PlayerLog player_log;
+
+    // Temporary way to handle errors in creating a daily log. Pass in a
+    // negative error code to signifiy that there was an error creating this
+    // object.
+    // TODO: Update this later when we find a way to handle or log errors.
+    static DailyPlayerLog MakeFaultyLog(int error_code) {
+      DailyPlayerLog faulty_log = {};
+      if (error_code > 0) {
+        error_code *= -1;
+      }
+      faulty_log.player_info.id = error_code;
+      return faulty_log;
+    }
   };
 
   PlayerFetcher(CurlFetch *curl_fetch, TeamFetcher *team_fetcher,
@@ -252,7 +265,7 @@ private:
   static const bool kDefaultStrictSearch;
 
   // Base url for MySportsFeed daily player log endpoint.
-  static const std::string base_url_;
+  static const std::string kBaseUrl;
 };
 
 } // namespace fantasy_ball

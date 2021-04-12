@@ -7,7 +7,7 @@
 #include "player_fetcher.h"
 
 namespace fantasy_ball {
-const std::string TeamFetcher::base_url_ =
+const std::string TeamFetcher::kBaseUrl =
     "https://api.mysportsfeeds.com/<version>/pull/nba/<season>/date/"
     "<date>/games.json";
 // e.g.
@@ -48,7 +48,7 @@ std::string TeamFetcher::construct_endpoint_url(endpoint::Options *options) {
   const std::string version = options->version;
   const std::string season_start = options->season_start;
   const std::string date = options->date;
-  return replace(replace(replace(base_url_, "<version>", version),
+  return replace(replace(replace(kBaseUrl, "<version>", version),
                          "<season-start>", season_start),
                  "<date>", date);
 }

@@ -12,7 +12,7 @@ const std::string PlayerFetcher::kDefaultVersion = "v2.1";
 const std::string PlayerFetcher::kDefaultSeasonStart = "2020-2021-regular";
 const std::string PlayerFetcher::kDefaultDate = "20210320";
 const bool PlayerFetcher::kDefaultStrictSearch = true;
-const std::string PlayerFetcher::base_url_ =
+const std::string PlayerFetcher::kBaseUrl =
     "https://api.mysportsfeeds.com/<version>/pull/nba/<season-start>/date/"
     "<date>/player_gamelogs.json?";
 
@@ -100,7 +100,7 @@ PlayerFetcher::DailyPlayerLog
 PlayerFetcher::GetPlayerLog(PlayerFetcher::PlayerIdentity player,
                             endpoint::Options *options) {
   if (player.id == -1) {
-    return DailyPlayerLog();
+    return DailyPlayerLog::MakeFaultyLog(1);
   }
 
   auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
@@ -200,7 +200,7 @@ std::string PlayerFetcher::make_base_daily_log_url(endpoint::Options *options) {
     season_start = options_.season_start;
     date = options_.date;
   }
-  return replace(replace(replace(base_url_, "<version>", version),
+  return replace(replace(replace(kBaseUrl, "<version>", version),
                          "<season-start>", season_start),
                  "<date>", date);
 }
@@ -336,7 +336,7 @@ PlayerFetcher::retrieve_daily_player_log(PlayerFetcher::PlayerIdentity player,
 
   // Check if we had an error during the curl call.
   if (curl_fetch_->curl_ret()) {
-    return DailyPlayerLog();
+    return DailyPlayerLog::MakeFaultyLog(2);
   }
 
   // Create the daily player log object by reading the json content response
@@ -347,7 +347,7 @@ PlayerFetcher::retrieve_daily_player_log(PlayerFetcher::PlayerIdentity player,
   if (daily_player_logs.size() == 1) {
     return daily_player_logs.front();
   }
-  return DailyPlayerLog();
+  return DailyPlayerLog::MakeFaultyLog(3);
 }
 
 endpoint::Options PlayerFetcher::GetDefaultOptions() { return options_; }
