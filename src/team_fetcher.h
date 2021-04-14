@@ -3,7 +3,6 @@
 
 #include "curl_fetch.h"
 #include "util.h"
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>

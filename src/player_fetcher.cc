@@ -1,7 +1,6 @@
 #include "player_fetcher.h"
 
 #include <algorithm>
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <vector>
 
@@ -83,15 +82,12 @@ void PlayerFetcher::AddToRoster(
   if (it != player_log_fetches_.end()) {
     it->roster.insert(std::end(it->roster), std::begin(roster),
                       std::end(roster));
-    std::cout << "last added: " << it->roster.back().first_name << std::endl;
   } else {
     PlayerLogFetch log_fetch = {};
     log_fetch.fetch_options = used_options;
     log_fetch.roster.insert(std::end(log_fetch.roster), std::begin(roster),
                             std::end(roster));
     player_log_fetches_.push_back(log_fetch);
-    std::cout << "last added: " << log_fetch.roster.back().first_name
-              << std::endl;
   }
 }
 
@@ -107,7 +103,6 @@ PlayerFetcher::GetPlayerLog(const PlayerFetcher::PlayerInfoShort &player,
   // skip the cache and retrieve the data for fetch requests with players
   // without an id (they only have their name filled out).
   if (player.id == -1) {
-    std::cout << "Can't use cache: " << player.last_name << std::endl;
     return retrieve_daily_player_log(player, &used_options);
   }
 
@@ -144,7 +139,6 @@ PlayerFetcher::GetRosterLog(endpoint::Options *options) {
                       return log_fetch.fetch_options == used_options;
                     });
   if (it == player_log_fetches_.end()) {
-    std::cout << "Given option doesn't have a log fetch entry." << std::endl;
     return daily_logs;
   }
 
@@ -155,10 +149,8 @@ PlayerFetcher::GetRosterLog(endpoint::Options *options) {
     if (player.id == -1) {
       // We skip the cache for players without a valid id.
       daily_logs.push_back(retrieve_daily_player_log(player, &used_options));
-      std::cout << "Skipped cache: " << player.first_name << std::endl;
       continue;
     }
-    std::cout << "checking: " << player.last_name << std::endl;
     auto cache_entry_it = cache_.find(player.id);
     if (cache_entry_it == cache_.end()) {
       missing_players.push_back(player);
@@ -186,8 +178,6 @@ PlayerFetcher::GetRosterLog(endpoint::Options *options) {
       retrieve_daily_player_logs(missing_players, &used_options);
   // Store the players into the cache and add them to the returned vector.
   for (const auto &player : daily_player_logs) {
-    std::cout << "Adding missing: " << player.player_info.first_name
-              << std::endl;
     auto cache_entry_it = cache_.find(player.player_info.id);
     auto fetched_player = std::make_pair(used_options, player);
     if (cache_entry_it == cache_.end()) {
@@ -209,9 +199,7 @@ void PlayerFetcher::GetPlayerInfoShort(
   const std::string endpoint_url =
       make_base_player_info_url(&used_options) +
       make_player_list_url({player_info->first_name, player_info->last_name});
-  std::cout << "Endpoint URL: " << endpoint_url << std::endl;
   std::string json_content = curl_fetch_->GetContent(endpoint_url);
-  std::cout << "content size: " << json_content.size() << std::endl;
 
   // Check if we had an error during the curl call.
   if (curl_fetch_->curl_ret()) {
@@ -221,7 +209,6 @@ void PlayerFetcher::GetPlayerInfoShort(
   using json = nlohmann::json;
   // Check if valid json content.
   if (!json::accept(json_content)) {
-    std::cout << "Not accepted" << std::endl;
     return;
   }
   json data = json::parse(json_content);
@@ -319,7 +306,6 @@ PlayerFetcher::construct_player_logs(const std::string &curl_response,
   using json = nlohmann::json;
   // Check if valid json content.
   if (!json::accept(curl_response)) {
-    std::cout << "Not accepted" << std::endl;
     return daily_player_logs;
   }
   json data = json::parse(curl_response);
@@ -327,20 +313,16 @@ PlayerFetcher::construct_player_logs(const std::string &curl_response,
   // Isolate each type of data for the player daily log.
   const auto &game_logs = get_game_logs(data);
   if (game_logs.empty()) {
-    std::cout << "Emtpy gamelogs" << std::endl;
     return daily_player_logs;
   }
   const auto &player_refs = get_player_references(data);
   if (player_refs.empty()) {
-    std::cout << "Emtpy player refs" << std::endl;
     return daily_player_logs;
   }
   const auto &game_refs = team_fetcher_->GetGameReferences(options);
   if (game_refs.empty()) {
-    std::cout << "Emtpy game refs" << std::endl;
     return daily_player_logs;
   }
-  std::cout << "Found all logs" << std::endl;
   // For each game log, retrieve the other types of data. Skip incomplete game
   // logs that don't have corresponding data.
   for (const auto &game_log : game_logs) {
@@ -349,11 +331,9 @@ PlayerFetcher::construct_player_logs(const std::string &curl_response,
     }
     DailyPlayerLog daily_player_log;
     const int &id = game_log["player"]["id"];
-    std::cout << "id: " << id << std::endl;
     const auto &player_ref = find_player_reference(player_refs, id);
     daily_player_log.player_info = PlayerIdentity::deserialize_json(player_ref);
     daily_player_log.player_log = PlayerLog::deserialize_json(game_log);
-    std::cout << "deserialized player_info and player_log: " << id << std::endl;
 
     // NOTE: The game/score data is retrieved using a different endpoint.
     // Therefore, we use the TeamFetcher to do get it, then we find the
@@ -364,7 +344,6 @@ PlayerFetcher::construct_player_logs(const std::string &curl_response,
                                daily_player_log.player_log.game_event_id;
                       });
     if (it == game_refs.end()) {
-      std::cout << "No game events found." << std::endl;
       continue;
     }
     daily_player_log.game_info = *it;
@@ -446,9 +425,7 @@ PlayerFetcher::DailyPlayerLog PlayerFetcher::retrieve_daily_player_log(
   // Construct endpoint url and do curl operation.
   const std::string daily_log_endpoint_url =
       make_base_daily_log_url(options) + make_player_list_url(player);
-  std::cout << "Endpoint URL: " << daily_log_endpoint_url << std::endl;
   std::string json_content = curl_fetch_->GetContent(daily_log_endpoint_url);
-  std::cout << "content size: " << json_content.size() << std::endl;
 
   // Check if we had an error during the curl call.
   if (curl_fetch_->curl_ret()) {
@@ -460,7 +437,6 @@ PlayerFetcher::DailyPlayerLog PlayerFetcher::retrieve_daily_player_log(
   auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
   auto daily_player_logs = construct_player_logs(json_content, &used_options);
   // We should only have one log since we requested only one player id.
-  std::cout << "SIZE: " << daily_player_logs.size() << std::endl;
   if (daily_player_logs.size() == 1) {
     return daily_player_logs.front();
   }
@@ -474,9 +450,7 @@ PlayerFetcher::retrieve_daily_player_logs(
   // Construct endpoint url and do curl operation.
   const std::string daily_log_endpoint_url =
       make_base_daily_log_url(options) + make_player_list_url(roster);
-  std::cout << "Endpoint URL: " << daily_log_endpoint_url << std::endl;
   std::string json_content = curl_fetch_->GetContent(daily_log_endpoint_url);
-  std::cout << "content size: " << json_content.size() << std::endl;
 
   // Check if we had an error during the curl call.
   if (curl_fetch_->curl_ret()) {
@@ -487,7 +461,6 @@ PlayerFetcher::retrieve_daily_player_logs(
   // returned by the MySportsFeed endpoint.
   auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
   auto daily_player_logs = construct_player_logs(json_content, &used_options);
-  std::cout << "SIZE: " << daily_player_logs.size() << std::endl;
   return daily_player_logs;
 }
 
