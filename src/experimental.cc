@@ -8,6 +8,8 @@
 #include <string>
 #include <wx/datetime.h>
 
+#include "util.h"
+
 // For compilers that support precompilation, includes "wx/wx.h".
 #include <wx/wxprec.h>
 #ifndef WX_PRECOMP
@@ -180,10 +182,9 @@ std::string get_local_date_from_iso(std::string iso_date) {
 
 int main() {
 
-  // may not be needed.
-  const std::string api_key = "";
-  std::string url = "https://api.mysportsfeeds.com/v2.1/pull/nba/"
-                    "2020-2021-regular/date/20210319/games.json";
+  const std::string api_key = fantasy_ball::endpoint::read_msf_api_key();
+  std::string url = "https://scrambled-api.mysportsfeeds.com/v2.1/pull/nba/"
+                    "players.json?player=jordan-poole";
   // "https://api.mysportsfeeds.com/v2.1/pull/nba/2020-2021-regular/date/20210319/player_gamelogs.json?player=10134"
   using json = nlohmann::json;
   json data;
@@ -221,8 +222,8 @@ int main() {
   // // serialization with pretty printing
   // // pass in the amount of spaces to indent
   std::cout << data.dump(4) << std::endl;
-  std::string iso_date = "2021-03-20T00:00:00.000Z";
-  std::cout << "Local time: " << get_local_date_from_iso(iso_date) << "\n";
+  // std::string iso_date = "2021-03-20T00:00:00.000Z";
+  // std::cout << "Local time: " << get_local_date_from_iso(iso_date) << "\n";
   // this pretends to be the datetime from the server in the UTC
   // wxDateTime dtUTC;
   // // 2021-03-20T00:00:00.000Z -- need to trim .000Z part.

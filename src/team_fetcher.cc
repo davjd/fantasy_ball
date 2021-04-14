@@ -1,5 +1,6 @@
 #include "team_fetcher.h"
 
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -8,7 +9,7 @@
 
 namespace fantasy_ball {
 const std::string TeamFetcher::kBaseUrl =
-    "https://api.mysportsfeeds.com/<version>/pull/nba/<season>/date/"
+    "https://api.mysportsfeeds.com/<version>/pull/nba/<season-start>/date/"
     "<date>/games.json";
 // e.g.
 // https://api.mysportsfeeds.com/v2.1/pull/nba/2020-2021-regular/date/20210319/games.json
@@ -22,15 +23,18 @@ TeamFetcher::GetGameReferences(endpoint::Options *options) {
   using json = nlohmann::json;
   std::vector<GameMatchup> matchups;
   const std::string endpoint_url = construct_endpoint_url(options);
+  std::cout << "endpoint for team: " << endpoint_url << std::endl;
   std::string content = curl_fetch_->GetContent(endpoint_url);
   if (curl_fetch_->curl_ret()) {
     return matchups;
   }
   if (!json::accept(content)) {
+    std::cout << "not accepted: " << content << std::endl;
     return matchups;
   }
   json data = json::parse(content);
   if (!data.contains("games")) {
+    std::cout << "team content: " << content << std::endl;
     return matchups;
   }
   const auto &games = data["games"];
@@ -45,6 +49,8 @@ TeamFetcher::GetGameReferences(endpoint::Options *options) {
 }
 
 std::string TeamFetcher::construct_endpoint_url(endpoint::Options *options) {
+  // TODO: Maybe just have the kBaseUrl as non-static and build it inside the
+  // constructor.
   const std::string version = options->version;
   const std::string season_start = options->season_start;
   const std::string date = options->date;

@@ -3,6 +3,7 @@
 
 #include "curl_fetch.h"
 #include "util.h"
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -18,8 +19,8 @@ public:
     int home_team_id;
     std::string away_team;
     int away_team_id;
-    std::string home_score;
-    std::string away_score;
+    int home_score;
+    int away_score;
     int event_id;
 
     static GameMatchup deserialize_json(const nlohmann::json &json_content) {
@@ -31,13 +32,15 @@ public:
       }
       const auto &schedule = json_content["schedule"];
       const auto &score = json_content["score"];
-      matchup.home_team = schedule["homeTeam"]["abbreviation"];
-      matchup.home_team_id = schedule["homeTeam"]["id"];
-      matchup.away_team = schedule["awayTeam"]["abbreviation"];
-      matchup.away_team_id = schedule["awayTeam"]["id"];
-      matchup.home_score = score["homeScoreTotal"];
-      matchup.away_score = score["awayScoreTotal"];
-      matchup.event_id = schedule["id"];
+      matchup.home_team =
+          schedule["homeTeam"]["abbreviation"].get<std::string>();
+      matchup.home_team_id = schedule["homeTeam"]["id"].get<int>();
+      matchup.away_team =
+          schedule["awayTeam"]["abbreviation"].get<std::string>();
+      matchup.away_team_id = schedule["awayTeam"]["id"].get<int>();
+      matchup.home_score = score["homeScoreTotal"].get<int>();
+      matchup.away_score = score["awayScoreTotal"].get<int>();
+      matchup.event_id = schedule["id"].get<int>();
       return matchup;
     }
   };

@@ -24,6 +24,9 @@ void CurlFetch::Init() {
 
   // Set the api key for the MySportsFeed endpoint.
   api_config_.msf_api_key = endpoint::read_msf_api_key();
+
+  // TODO: Decide if we want to have this here.
+  endpoint::init_msf_curl_header(api_config_.msf_api_key, curl_instance_);
 }
 
 std::string CurlFetch::GetContent(const std::string &url) {
@@ -34,6 +37,7 @@ std::string CurlFetch::GetContent(const std::string &url) {
 }
 
 void CurlFetch::init_curl_options(CURL *curl_instance, std::string *buffer) {
+  // TODO: Add compression flag.
   curl_easy_setopt(curl_instance, CURLOPT_WRITEFUNCTION, write_callback);
   curl_easy_setopt(curl_instance, CURLOPT_WRITEDATA, buffer);
   curl_easy_setopt(curl_instance, CURLOPT_FRESH_CONNECT, 1);

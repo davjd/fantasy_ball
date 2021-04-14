@@ -18,6 +18,9 @@ class CurlFetch;
 class PlayerFetcher {
 public:
   struct PlayerIdentity {
+    // TODO: Temporarily, we are using this struct to also handle fetch
+    // requests. We should create a separate struct just for this use case
+    // without the unused fields.
     PlayerIdentity() = default;
     std::string first_name;
     std::string last_name;
@@ -26,7 +29,7 @@ public:
 
     // A negative id signifies that an error occured when creating this object
     // and should be recreated.
-    int id;
+    int id = -1;
 
     // Reads a single playerReferences json item into the player_identity
     // object.
@@ -37,16 +40,22 @@ public:
       if (!player_reference.contains("id")) {
         return player;
       }
-      player.id = player_reference["id"];
-      player.first_name = player_reference["firstName"];
-      player.last_name = player_reference["lastName"];
-      player.img_url = player_reference["officialImageSrc"];
+      player.id = player_reference["id"].get<int>();
+      player.first_name = player_reference["firstName"].get<std::string>();
+      player.last_name = player_reference["lastName"].get<std::string>();
+      // Some players do not have an image source (may be because they're new
+      // players). TODO: Insert a default image source for those that don't have
+      // an image assigned them.
+      if (!player_reference["officialImageSrc"].is_null()) {
+        player.img_url =
+            player_reference["officialImageSrc"].get<std::string>();
+      }
 
       // NOTE: Right now, we can only retrieve the primary position, meaning, a
       // player might be able to play multiple positions but the API doesn't
       // return it.
       // TODO: Figure out if we can get secondary positions.
-      player.position = player_reference["primaryPosition"];
+      player.position = player_reference["primaryPosition"].get<std::string>();
       return player;
     }
   };
@@ -92,29 +101,30 @@ public:
         log.game_event_id = game_log["game"]["id"];
       }
       const auto &stats = game_log["stats"];
-      log.seconds_played = stats["miscellaneous"]["minSeconds"];
-      log.field_goals_made = stats["fieldGoals"]["fgMade"];
-      log.field_goals_attempt = stats["fieldGoals"]["fgAtt"];
-      log.field_goal_percentage = stats["fieldGoals"]["fgPct"];
-      log.three_points_made = stats["fieldGoals"]["fg3PtMade"];
-      log.three_points_attempt = stats["fieldGoals"]["fg3PtAtt"];
-      log.three_points_percentage = stats["fieldGoals"]["fg3PtPct"];
-      log.two_points_made = stats["fieldGoals"]["fg2PtMade"];
-      log.two_points_attempt = stats["fieldGoals"]["fg2PtAtt"];
-      log.two_points_percentage = stats["fieldGoals"]["fg2PtPct"];
-      log.free_throws_made = stats["freeThrows"]["ftMade"];
-      log.free_throws_attempt = stats["freeThrows"]["ftAtt"];
-      log.free_throws_percentage = stats["freeThrows"]["ftPct"];
-      log.offensive_rebounds = stats["rebounds"]["offReb"];
-      log.defensive_rebounds = stats["rebounds"]["defReb"];
-      log.total_rebounds = stats["rebounds"]["reb"];
-      log.assists = stats["offense"]["ast"];
-      log.steals = stats["defense"]["stl"];
-      log.blocks = stats["defense"]["blk"];
-      log.turnovers = stats["defense"]["tov"];
-      log.personal_fouls = stats["miscellaneous"]["fouls"];
-      log.points = stats["offense"]["pts"];
-      log.player_id = game_log["player"]["id"];
+      log.seconds_played = stats["miscellaneous"]["minSeconds"].get<int>();
+      log.field_goals_made = stats["fieldGoals"]["fgMade"].get<int>();
+      log.field_goals_attempt = stats["fieldGoals"]["fgAtt"].get<int>();
+      log.field_goal_percentage = stats["fieldGoals"]["fgPct"].get<float>();
+      log.three_points_made = stats["fieldGoals"]["fg3PtMade"].get<int>();
+      log.three_points_attempt = stats["fieldGoals"]["fg3PtAtt"].get<int>();
+      log.three_points_percentage =
+          stats["fieldGoals"]["fg3PtPct"].get<float>();
+      log.two_points_made = stats["fieldGoals"]["fg2PtMade"].get<int>();
+      log.two_points_attempt = stats["fieldGoals"]["fg2PtAtt"].get<int>();
+      log.two_points_percentage = stats["fieldGoals"]["fg2PtPct"].get<float>();
+      log.free_throws_made = stats["freeThrows"]["ftMade"].get<int>();
+      log.free_throws_attempt = stats["freeThrows"]["ftAtt"].get<int>();
+      log.free_throws_percentage = stats["freeThrows"]["ftPct"].get<float>();
+      log.offensive_rebounds = stats["rebounds"]["offReb"].get<int>();
+      log.defensive_rebounds = stats["rebounds"]["defReb"].get<int>();
+      log.total_rebounds = stats["rebounds"]["reb"].get<int>();
+      log.assists = stats["offense"]["ast"].get<int>();
+      log.steals = stats["defense"]["stl"].get<int>();
+      log.blocks = stats["defense"]["blk"].get<int>();
+      log.turnovers = stats["defense"]["tov"].get<int>();
+      log.personal_fouls = stats["miscellaneous"]["fouls"].get<int>();
+      log.points = stats["offense"]["pts"].get<int>();
+      log.player_id = game_log["player"]["id"].get<int>();
       return log;
     }
   };
@@ -139,27 +149,75 @@ public:
     }
   };
 
+  // Contains a short description of a player.
+  struct PlayerInfoShort {
+    PlayerInfoShort() = default;
+    std::string first_name;
+    std::string last_name;
+    // A negative id signifies that an error occured when creating this object
+    // and should be recreated.
+    int id = -1;
+    std::string team;
+    int team_id;
+
+    void read_json(const nlohmann::json &player_reference) {
+      if (!player_reference.contains("player") ||
+          !player_reference.contains("teamAsOfDate")) {
+        id = -1;
+        return;
+      }
+      const auto &player_map = player_reference["player"];
+      const auto &team_map = player_reference["teamAsOfDate"];
+      id = player_map["id"].get<int>();
+      first_name = player_map["firstName"].get<std::string>();
+      last_name = player_map["lastName"].get<std::string>();
+      team = team_map["abbreviation"].get<std::string>();
+      team_id = team_map["id"].get<int>();
+    }
+
+    static PlayerInfoShort
+    deserialize_json(const nlohmann::json &player_reference) {
+      PlayerInfoShort player;
+      if (!player_reference.contains("player") ||
+          !player_reference.contains("teamAsOfDate")) {
+        return player;
+      }
+      const auto &player_map = player_reference["player"];
+      const auto &team_map = player_reference["teamAsOfDate"];
+      player.id = player_map["id"].get<int>();
+      player.first_name = player_map["firstName"].get<std::string>();
+      player.last_name = player_map["lastName"].get<std::string>();
+      player.team = team_map["abbreviation"].get<std::string>();
+      player.team_id = team_map["id"].get<int>();
+      return player;
+    }
+
+    bool is_empty() const {
+      return id == -1 && (first_name.empty() && last_name.empty());
+    }
+  };
+
   PlayerFetcher(CurlFetch *curl_fetch, TeamFetcher *team_fetcher,
                 endpoint::Options *options = nullptr);
   ~PlayerFetcher();
 
   // Add a player to the roster to do batch fetches. Returns true if player was
   // added successfully, otherwise false.
-  bool AddPlayer(const std::string &fname = "", const std::string &lname = "",
-                 const int &id = -1, endpoint::Options *options = nullptr);
+  bool AddPlayer(const PlayerInfoShort &player_info,
+                 endpoint::Options *options = nullptr);
 
   // Add to a roster with the given fetch options to do a batch retrieval.
-  void AddToRoster(std::vector<int> roster,
+  void AddToRoster(const std::vector<PlayerInfoShort> &roster,
                    endpoint::Options *options = nullptr);
 
   // Return the daily log for the given player. May utilize a cached copy or do
   // API call.
-  DailyPlayerLog GetPlayerLog(PlayerIdentity player,
+  DailyPlayerLog GetPlayerLog(const PlayerInfoShort &player,
                               endpoint::Options *options = nullptr);
 
   // Retrieve all the daily logs for the given roster with the specified
   // options.
-  std::unordered_map<int, DailyPlayerLog>
+  std::vector<DailyPlayerLog>
   GetRosterLog(endpoint::Options *options = nullptr);
 
   // Updates the date parameter for the daily player log endpoint.
@@ -176,6 +234,10 @@ public:
   static DailyPlayerLog RetrivePlayerLog(const std::string &fname,
                                          const std::string &lname = "");
 
+  // Retrieves the player id for the given names. Inserts the information
+  void GetPlayerInfoShort(PlayerInfoShort *player_info,
+                          endpoint::Options *options = nullptr);
+
 private:
   // Represents a single fetch request from the user to the daily player log
   // endpoint. This usually will be used to split requests based on different
@@ -187,13 +249,14 @@ private:
     endpoint::Options fetch_options;
 
     // The list of players that we want to retrieve their daily logs for.
-    std::vector<PlayerIdentity> roster;
+    std::vector<PlayerInfoShort> roster;
   };
 
   // List of fetches for daily player logs requests to the endpoint to process.
   std::vector<PlayerLogFetch> player_log_fetches_;
 
   // Cache copy of the retrieved daily player logs.
+  // TODO: This can get complicated and might neeed its own class.
   std::unordered_map<int,
                      std::vector<std::pair<endpoint::Options, DailyPlayerLog>>>
       cache_;
@@ -209,15 +272,17 @@ private:
 
   // Constructs a string with the player list section of the MySportsFeed daily
   // log endpoint. e.g. player=lebron-james,kyrie-irving
-  std::string make_player_list_url();
+  std::string make_player_list_url(const std::vector<PlayerInfoShort> &roster);
 
   // TODO: Add comments for the following functions.
-  std::string make_player_list_url(PlayerIdentity player);
-  void add_player_to_list_url(PlayerIdentity player,
+  std::string make_player_list_url(const PlayerInfoShort &player);
+  void add_player_to_list_url(const PlayerInfoShort &player,
                               std::string *player_list_url);
 
   // Constructs a string with the base daily log endpoint url.
   std::string make_base_daily_log_url(endpoint::Options *options = nullptr);
+
+  std::string make_base_player_info_url(endpoint::Options *options);
 
   // Creates the player log object from a JSON string.
   // NOTE: The string parameter should be of JSON format and should've been fed
@@ -255,8 +320,13 @@ private:
 
   // Retrieves the daily player log from the MySportsFeed endpoint.
   DailyPlayerLog
-  retrieve_daily_player_log(PlayerIdentity player,
+  retrieve_daily_player_log(const PlayerInfoShort &player,
                             endpoint::Options *options = nullptr);
+
+  // Retrieves multiple player logs using the players in the roster.
+  std::vector<DailyPlayerLog>
+  retrieve_daily_player_logs(const std::vector<PlayerInfoShort> &roster,
+                             endpoint::Options *options);
 
   // Default parameters to the daily player log endpoint.
   static const std::string kDefaultVersion;
@@ -265,7 +335,8 @@ private:
   static const bool kDefaultStrictSearch;
 
   // Base url for MySportsFeed daily player log endpoint.
-  static const std::string kBaseUrl;
+  static const std::string kDailyPlayerLogUrl;
+  static const std::string kPlayerInfoUrl;
 };
 
 } // namespace fantasy_ball

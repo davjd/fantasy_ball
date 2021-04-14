@@ -25,6 +25,7 @@ include(${wxWidgets_USE_FILE})
 
 find_package(nlohmann_json 3.2.0 REQUIRED)
 
+# add_executable(fantasy_ball src/experimental.cc ${HEADER_FILES})
 add_executable(fantasy_ball src/main.cc ${HEADER_FILES})
 
 include_directories(${CURL_INCLUDE_DIR})
