@@ -69,8 +69,6 @@ bool PlayerFetcher::AddPlayer(const PlayerFetcher::PlayerInfoShort &player_info,
   return added;
 }
 
-// Set a roster that we'll do fetch calls on. The roster should be a list of
-// player ids.
 void PlayerFetcher::AddToRoster(
     const std::vector<PlayerFetcher::PlayerInfoShort> &roster,
     endpoint::Options *options) {
@@ -196,9 +194,8 @@ void PlayerFetcher::GetPlayerInfoShort(
     return;
   }
   auto used_options = (options == nullptr ? GetDefaultOptions() : *options);
-  const std::string endpoint_url =
-      make_base_player_info_url(&used_options) +
-      make_player_list_url({player_info->first_name, player_info->last_name});
+  const std::string endpoint_url = make_base_player_info_url(&used_options) +
+                                   make_player_list_url(*player_info);
   std::string json_content = curl_fetch_->GetContent(endpoint_url);
 
   // Check if we had an error during the curl call.

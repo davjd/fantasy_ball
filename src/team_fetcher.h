@@ -9,7 +9,6 @@
 
 namespace fantasy_ball {
 
-// Team (record, roster).
 class TeamFetcher {
 public:
   struct GameMatchup {
@@ -49,7 +48,6 @@ public:
   std::vector<GameMatchup> GetGameReferences(endpoint::Options *options);
 
 private:
-  // Base url for MySportsFeed daily player log endpoint.
   static const std::string kBaseUrl;
 
   // NOTE: This class doesn't have ownership of this object.

@@ -1,8 +1,6 @@
 #include "curl_fetch.h"
 
 #include <algorithm>
-#include <cassert>
-#include <iostream>
 #include <memory>
 #include <string>
 

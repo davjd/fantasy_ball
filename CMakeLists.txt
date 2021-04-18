@@ -12,13 +12,16 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(HEADER_FILES src/util.cc
                  src/curl_fetch.cc
                  src/team_fetcher.cc 
-                 src/player_fetcher.cc     
+                 src/player_fetcher.cc 
+                 src/postgre_sql_fetch.cc    
 )
 
 include_directories(src/)
 
 set(CURL_LIBRARY "-lcurl")
 find_package(CURL REQUIRED)
+find_library(PQXX_LIB pqxx REQUIRED)
+find_library(PQ_LIB pq REQUIRED)
 
 find_package(wxWidgets REQUIRED COMPONENTS net core base)
 include(${wxWidgets_USE_FILE})
@@ -29,4 +32,4 @@ find_package(nlohmann_json 3.2.0 REQUIRED)
 add_executable(fantasy_ball src/main.cc ${HEADER_FILES})
 
 include_directories(${CURL_INCLUDE_DIR})
-target_link_libraries(fantasy_ball ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES})
+target_link_libraries(fantasy_ball ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB})

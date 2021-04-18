@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
 #include <curl/curl.h>
+#include <fstream>
 
 namespace fantasy_ball {
 
@@ -120,7 +120,7 @@ namespace endpoint {
 std::string read_msf_api_key() {
   std::ifstream file(msf_api_file_path);
   if (!file.is_open()) {
-    return "<invalid_file_path>";
+    return "";
   }
   std::string api_key;
   file >> api_key;
@@ -136,4 +136,38 @@ void init_msf_curl_header(const std::string &api_key, CURL *curl_instance) {
   curl_easy_setopt(curl_instance, CURLOPT_HTTPHEADER, list);
 }
 } // namespace endpoint
+
+namespace postgre {
+std::string read_postgre_config() {
+  std::ifstream file(postgre_config_path);
+  if (!file.is_open()) {
+    return "";
+  }
+  std::string config;
+  getline(file, config);
+  return config;
+}
+
+std::vector<std::string> get_commands_from_file(const std::string filename) {
+  const std::string sql_file_path =
+      config_directory + postgre_scripts_directory + filename;
+  std::ifstream sql_file(sql_file_path);
+  std::string line;
+  std::string sql_command;
+  std::vector<std::string> commands;
+  while (getline(sql_file, line)) {
+    // Skip comments or new lines.
+    if (line.front() == '-' || line == "\n") {
+      continue;
+    }
+    sql_command += line;
+    // Push each command separately.
+    if (line.back() == ';') {
+      commands.push_back(sql_command);
+      sql_command.clear();
+    }
+  }
+  return commands;
+}
+} // namespace postgre
 } // namespace fantasy_ball

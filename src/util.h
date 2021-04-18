@@ -7,6 +7,9 @@
 
 namespace fantasy_ball {
 
+// Directory containing configurations.
+static const std::string config_directory = "config/";
+
 int letter_to_int(char letter);
 
 std::string string_to_lower(const std::string &str);
@@ -31,7 +34,7 @@ std::string base64_decode(const std::string &in);
 
 namespace endpoint {
 // File path to file that contains mysportsfeeds api key.
-static const std::string msf_api_file_path = "tmp/api_key.txt";
+static const std::string msf_api_file_path = "config/mysportsfeeds_api_key.txt";
 
 std::string read_msf_api_key();
 
@@ -65,5 +68,13 @@ struct Options {
   std::string season_start;
 };
 } // namespace endpoint
+
+namespace postgre {
+// Path to the config, which contains the user, password, etc.
+static const std::string postgre_config_path = "config/postgre.txt";
+static const std::string postgre_scripts_directory = "postgre_scripts/";
+std::string read_postgre_config();
+std::vector<std::string> get_commands_from_file(const std::string filename);
+} // namespace postgre
 } // namespace fantasy_ball
 #endif // UTIL_H_

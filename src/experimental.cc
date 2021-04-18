@@ -4,17 +4,22 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <wx/datetime.h>
 
 #include "util.h"
 
+#include <pqxx/pqxx>
+
+#include "postgre_sql_fetch.h"
+
 // For compilers that support precompilation, includes "wx/wx.h".
-#include <wx/wxprec.h>
-#ifndef WX_PRECOMP
-#include <wx/wx.h>
-#endif
+// #include <wx/wxprec.h>
+// #ifndef WX_PRECOMP
+// #include <wx/wx.h>
+// #endif
 // class MyApp : public wxApp
 // {
 // public:
@@ -180,105 +185,190 @@ std::string get_local_date_from_iso(std::string iso_date) {
   return date.FormatISOCombined().ToStdString();
 }
 
+// int main() {
+
+//   const std::string api_key = fantasy_ball::endpoint::read_msf_api_key();
+//   std::string url = "https://scrambled-api.mysportsfeeds.com/v2.1/pull/nba/"
+//                     "players.json?player=jordan-poole";
+//   //
+//   "https://api.mysportsfeeds.com/v2.1/pull/nba/2020-2021-regular/date/20210319/player_gamelogs.json?player=10134"
+//   using json = nlohmann::json;
+//   json data;
+
+//   std::string buffer;
+//   CURL *curl_instance = curl_easy_init();
+//   const std::string cache_filename = "cache.json";
+//   bool cache_exist = std::filesystem::exists(cache_filename);
+
+//   if (!cache_exist) {
+//     auto res = curl_post(url, api_key, curl_instance, &buffer);
+//     if (res) {
+//       std::cout << "Error occurred making CURL request.\n";
+//     }
+//     curl_easy_cleanup(curl_instance);
+
+//     std::ofstream file(cache_filename);
+//     std::cout << buffer << "\n";
+//     data = json::parse(buffer);
+//     file << std::setw(4) << data << std::endl;
+//   } else {
+//     std::ifstream file(cache_filename);
+//     file >> data;
+//   }
+
+//   std::cout << "packet: " << std::endl;
+
+//   // auto o = json::parse(buffer_);
+//   // std::ofstream cache("file.json");
+//   // cache << std::setw(4) << o << std::endl;
+
+//   // // explicit conversion to string
+//   // //   std::string s = j.dump(); // {"happy":true,"pi":3.141}
+
+//   // // serialization with pretty printing
+//   // // pass in the amount of spaces to indent
+//   std::cout << data.dump(4) << std::endl;
+//   // std::string iso_date = "2021-03-20T00:00:00.000Z";
+//   // std::cout << "Local time: " << get_local_date_from_iso(iso_date) <<
+//   "\n";
+//   // this pretends to be the datetime from the server in the UTC
+//   // wxDateTime dtUTC;
+//   // // 2021-03-20T00:00:00.000Z -- need to trim .000Z part.
+//   // if (!dtUTC.ParseISOCombined(iso_date)) {
+//   //   std::cout << "Couldn't parse.\n";
+//   // } else {
+//   //   // calc the difference between the UTC and the local tz
+//   //   wxTimeSpan ts = dtUTC.Subtract(dtUTC.ToUTC());
+
+//   //   // now offset the datetime by the difference
+//   //   wxDateTime dtLocal = dtUTC + ts;
+//   //   std::cout << "Local time: " << dtLocal.FormatISOCombined().c_str()
+//   //             << std::endl;
+//   //   std::cout << "Default time: " << dtUTC.FormatISOCombined().c_str()
+//   //             << std::endl;
+//   // }
+//   // // for (json::iterator it = o.begin(); it != o.end(); ++it) {
+//   // //   std::cout << it.key() << "\n";
+//   // // }
+
+//   // // Here's how to index and get an array from the json object.
+//   // const auto &gamelogs = data["gamelogs"];
+//   // std::cout << "size: " << gamelogs.size() << "\n";
+//   // for (const auto &log : gamelogs) {
+//   //   if (!log.contains("player")) {
+//   //     std::cout << "No player.\n";
+//   //     break;
+//   //   }
+//   //   std::cout << log["player"]["id"] << "\n";
+//   // }
+
+//   // const auto &gamelogs = data.find("gamelogs");
+//   // if (gamelogs == data.end()) {
+//   //   std::cout << "Found no gamelogs.\n";
+//   //   return 0;
+//   // }
+//   // for (const auto &log : *gamelogs) {
+//   //   if (!log.contains("player")) {
+//   //     std::cout << "No player.\n";
+//   //     break;
+//   //   }
+//   //   std::cout << log["player"]["id"] << "\n";
+//   // }
+
+//   // auto box_score_iter = data["boxscore"].find("players");
+
+//   // // // or via find and an iterator
+//   // if (box_score_iter != o.find("boxscore")->end()) {
+//   //   std::cout << box_score_iter->dump(4);
+//   // } else {
+//   //   std::cout << "Could not find boxscore key.\n";
+//   // }
+//   // {
+//   //     "happy": true,
+//   //     "pi": 3.141
+//   // }
+//   return 0;
+// }
+
+// int main() {
+//   try {
+//     const std::string config = fantasy_ball::postgre::read_postgre_config();
+//     std::cout << "config: " << config << std::endl;
+//     if (config.empty()) {
+//       std::cout << "Error reading config file." << std::endl;
+//       return 0;
+//     }
+//     auto C = std::make_unique<pqxx::connection>(config);
+//     std::cout << "Connected to " << C->dbname() << std::endl;
+
+//     fantasy_ball::PostgreSQLFetch psql_fetch;
+//     auto commands =
+//         psql_fetch.read_from_file("postgre_scripts/create_user_account.sql");
+//     std::cout << "Commands: " << commands.size() << std::endl;
+//     for (const std::string &command : commands) {
+//       std::cout << "--->" << command << std::endl << std::endl;
+//     }
+
+//     // Write to database.
+//     {
+//       pqxx::work W{*C};
+//       for (const std::string &command : commands) {
+//         W.exec0(command);
+//       }
+
+//       std::cout << "Making changes definite.\n";
+//       pqxx::result R{W.exec("SELECT * FROM user_account")};
+
+//       std::cout << "Found " << R.size() << " user_account:\n";
+//       for (auto row : R) {
+//         for (auto const &field : row) {
+//           std::cout << field.c_str() << '\t';
+//         }
+//         std::cout << std::endl;
+//       }
+//       W.commit();
+//     }
+
+//     // Read from database.
+//     // {
+//     //   pqxx::work W{*C};
+
+//     //   pqxx::result R{W.exec("SELECT * FROM class")};
+
+//     //   std::cout << "Found " << R.size() << " classes:\n";
+//     //   for (auto row : R) {
+//     //     for (auto const &field : row) {
+//     //       std::cout << field.c_str() << '\t';
+//     //     }
+//     //     std::cout << std::endl;
+//     //   }
+
+//     //   // std::cout << "Doubling all employees' salaries...\n";
+//     //   // W.exec0("UPDATE employee SET salary = salary*2");
+
+//     //   std::cout << "Making changes definite." << std::endl;
+//     //   W.commit();
+//     // }
+
+//   } catch (std::exception const &e) {
+//     std::cerr << e.what() << 'a';
+//     return 1;
+//   }
+//   return 0;
+// }
+
 int main() {
-
-  const std::string api_key = fantasy_ball::endpoint::read_msf_api_key();
-  std::string url = "https://scrambled-api.mysportsfeeds.com/v2.1/pull/nba/"
-                    "players.json?player=jordan-poole";
-  // "https://api.mysportsfeeds.com/v2.1/pull/nba/2020-2021-regular/date/20210319/player_gamelogs.json?player=10134"
-  using json = nlohmann::json;
-  json data;
-
-  std::string buffer;
-  CURL *curl_instance = curl_easy_init();
-  const std::string cache_filename = "cache.json";
-  bool cache_exist = std::filesystem::exists(cache_filename);
-
-  if (!cache_exist) {
-    auto res = curl_post(url, api_key, curl_instance, &buffer);
-    if (res) {
-      std::cout << "Error occurred making CURL request.\n";
-    }
-    curl_easy_cleanup(curl_instance);
-
-    std::ofstream file(cache_filename);
-    std::cout << buffer << "\n";
-    data = json::parse(buffer);
-    file << std::setw(4) << data << std::endl;
-  } else {
-    std::ifstream file(cache_filename);
-    file >> data;
+  fantasy_ball::PostgreSQLFetch psql_fetch;
+  bool db_init_success = psql_fetch.Init();
+  if (!db_init_success) {
+    std::cout << "Couldn't initialize PostgreSQL database." << std::endl;
+    return 0;
   }
+  auto *connection = psql_fetch.GetCurrentConnection();
+  pqxx::work W{*connection};
+  psql_fetch.CreateBaseTables(&W);
+  W.commit();
+  std::cout << "Done" << std::endl;
 
-  std::cout << "packet: " << std::endl;
-
-  // auto o = json::parse(buffer_);
-  // std::ofstream cache("file.json");
-  // cache << std::setw(4) << o << std::endl;
-
-  // // explicit conversion to string
-  // //   std::string s = j.dump(); // {"happy":true,"pi":3.141}
-
-  // // serialization with pretty printing
-  // // pass in the amount of spaces to indent
-  std::cout << data.dump(4) << std::endl;
-  // std::string iso_date = "2021-03-20T00:00:00.000Z";
-  // std::cout << "Local time: " << get_local_date_from_iso(iso_date) << "\n";
-  // this pretends to be the datetime from the server in the UTC
-  // wxDateTime dtUTC;
-  // // 2021-03-20T00:00:00.000Z -- need to trim .000Z part.
-  // if (!dtUTC.ParseISOCombined(iso_date)) {
-  //   std::cout << "Couldn't parse.\n";
-  // } else {
-  //   // calc the difference between the UTC and the local tz
-  //   wxTimeSpan ts = dtUTC.Subtract(dtUTC.ToUTC());
-
-  //   // now offset the datetime by the difference
-  //   wxDateTime dtLocal = dtUTC + ts;
-  //   std::cout << "Local time: " << dtLocal.FormatISOCombined().c_str()
-  //             << std::endl;
-  //   std::cout << "Default time: " << dtUTC.FormatISOCombined().c_str()
-  //             << std::endl;
-  // }
-  // // for (json::iterator it = o.begin(); it != o.end(); ++it) {
-  // //   std::cout << it.key() << "\n";
-  // // }
-
-  // // Here's how to index and get an array from the json object.
-  // const auto &gamelogs = data["gamelogs"];
-  // std::cout << "size: " << gamelogs.size() << "\n";
-  // for (const auto &log : gamelogs) {
-  //   if (!log.contains("player")) {
-  //     std::cout << "No player.\n";
-  //     break;
-  //   }
-  //   std::cout << log["player"]["id"] << "\n";
-  // }
-
-  // const auto &gamelogs = data.find("gamelogs");
-  // if (gamelogs == data.end()) {
-  //   std::cout << "Found no gamelogs.\n";
-  //   return 0;
-  // }
-  // for (const auto &log : *gamelogs) {
-  //   if (!log.contains("player")) {
-  //     std::cout << "No player.\n";
-  //     break;
-  //   }
-  //   std::cout << log["player"]["id"] << "\n";
-  // }
-
-  // auto box_score_iter = data["boxscore"].find("players");
-
-  // // // or via find and an iterator
-  // if (box_score_iter != o.find("boxscore")->end()) {
-  //   std::cout << box_score_iter->dump(4);
-  // } else {
-  //   std::cout << "Could not find boxscore key.\n";
-  // }
-  // {
-  //     "happy": true,
-  //     "pi": 3.141
-  // }
   return 0;
 }
