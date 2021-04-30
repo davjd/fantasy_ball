@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package leagueservice;
+
+// Interface exported by the server.
+service LeagueService {
+  // RPC service providing functionalities regarding leagues.
+  //
+  // Creates a user account with the given registration information.
+  //
+  // Returns a session token for the given user.
+  rpc CreateUserAccount(CreateUserAccountRequest) returns (AuthToken) {}
+
+  // Creates a fantasy league, with the client user being designated as owner.
+  //
+  // Returns the league id which can be distributed externally so others can join it.
+  rpc CreateLeague(CreateLeagueRequest) returns (CreateLeagueResponse) {}
+
+  // Join a fantasy league with the given league id. Matchups are created once all users have been added.
+  //
+  // Empty response.
+  rpc JoinLeague(JoinLeagueRequest) returns (DefaultResponse) {}
+
+  // League settings functions.
+  //
+  // Update basic settings for a given league. Only the owner can do updates.
+  //
+  // Empty response.
+  rpc UpdateLeagueBasicSettings(LeagueBasicSettings) returns (DefaultResponse) {}
+
+  // Update transaction settings for a given league. Only the owner can do updates.
+  //
+  // Empty response.
+  rpc UpdateTransactionSettings(TransactionSettings) returns (DefaultResponse) {}
+
+  // Update waiver settings for a given league. Only the owner can do updates.
+  //
+  // Empty response.
+  rpc UpdateWaiverSettings(WaiverSettings) returns (DefaultResponse) {}
+
+  // Basic transaction functions.
+  //
+  // Request to make a draft pick.
+  //
+  // Empty response.
+  rpc MakeDraftPick(DraftPickRequest) returns (DefaultResponse) {}
+
+  // Request to make a draft pick.
+  //
+  // Empty response.
+  rpc UpdateLineup(UpdateLineupRequest) returns (DefaultResponse) {}
+
+  // Various read functions.
+  //
+  // Retrieve basic user information using the auth token.
+  //
+  // Returns user information.
+  rpc GetBasicUserInformation(AuthToken) returns (BasicUserInformation) {}
+
+  // Retrieve a matchup for the given user auth token and week.
+  //
+  // Returns user information.
+  rpc GetMatchup(MatchupRequest) returns (MatchupResponse) {}
+
+  // Retrieve a specific math for the given user auth token and date.
+  //
+  // Returns user information.
+  rpc GetMatch(MatchRequest) returns (MatchResponse) {}
+
+  // Retrieve the lineup for a specific match for the specified user.
+  //
+  // Returns list of lineup slots.
+  rpc GetLineup(LineupRequest) returns (LineupResponse) {}
+
+  // Retrieve a matchup for the given user auth token and week.
+  //
+  // Returns all settings for the league (including transaction and waiver settings).
+  rpc GetLeagueSettings(LeagueSettingsRequest) returns (LeagueSettingsResponse) {}
+
+  // Retrieve the standings for the given league.
+  //
+  // Returns list of standings.
+  rpc GetLeagueStandings(LeagueStandingsRequest) returns (LeagueStandingsResponse) {}
+}
+
+message DefaultResponse {
+  string message = 1;
+}
+
+// Local copy of https://github.com/googleapis/googleapis/blob/master/google/type/date.proto.
+message Date {
+  // Year of the date. Must be from 1 to 9999, or 0 to specify a date without
+  // a year.
+  int32 year = 1;
+
+  // Month of a year. Must be from 1 to 12, or 0 to specify a year without a
+  // month and day.
+  int32 month = 2;
+
+  // Day of a month. Must be from 1 to 31 and valid for the year and month, or 0
+  // to specify a year by itself or a year and month where the day isn't
+  // significant.
+  int32 day = 3;
+}
+
+message CreateUserAccountRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
+}
+
+message AuthToken {
+  int32 token = 1;
+}
+
+message CreateLeagueRequest {
+  AuthToken auth_token = 1;
+  string league_name = 2;
+}
+
+message CreateLeagueResponse {
+  int32 league_id = 1;
+}
+
+message JoinLeagueRequest {
+  AuthToken auth_token = 1;
+  int32 league_id = 2;
+}
+
+message LeagueBasicSettings {
+  AuthToken auth_token = 1;
+  string league_type = 2;
+  int32 max_users = 3;
+  string logo_url = 4;
+}
+
+message TransactionSettings {
+  AuthToken auth_token = 1;
+  string trade_review_type = 2;
+  int32 trade_review_time = 3;
+  int32 max_acquisitions = 4;
+  Date trade_deadline = 5;
+  int32 max_injury_reserves = 6;
+}
+
+message WaiverSettings {
+  AuthToken auth_token = 1;
+  int32 waiver_delay = 2;
+  string waiver_type = 3;
+}
+
+message DraftPickRequest {
+  AuthToken auth_token = 1;
+  int32 pick_number = 2;
+  int32 player_selected_id = 3;
+  int32 league_id = 4;
+}
+
+message LineupSlot {
+  string position = 1;
+  int32 player_id = 2;
+  int32 lineup_slot_id = 3;
+}
+
+message UpdateLineupRequest {
+  AuthToken auth_token = 1;
+  Date matchup_date = 2;
+  repeated LineupSlot lineup = 3;
+  int32 match_id = 4;
+}
+
+message BasicUserInformation {
+  string username = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+message MatchupRequest {
+  AuthToken auth_token = 1;
+  int32 week_number = 2;
+  int32 league_id = 3;
+}
+
+message MatchupResponse {
+  string username_1 = 1;
+  string username_2 = 2;
+  int32 score_1 = 3;
+  int32 score_2 = 4;
+  int32 ties_count = 5;
+  Date date_start = 6;
+  string matchup_tag = 7;
+  int32 matchup_id = 8;
+}
+
+message MatchRequest {
+  AuthToken auth_token = 1;
+  int32 matchup_id = 2;
+  Date match_date = 3;
+}
+
+message MatchResponse {
+  int32 user_id_1 = 1;
+  int32 user_id_2 = 2;
+  int32 match_id = 3;
+}
+
+message LineupRequest{
+  AuthToken auth_token = 1;
+  int32 match_id = 2;
+}
+
+message LineupResponse {
+  repeated LineupSlot lineup = 1;
+  int32 user_id = 2;
+}
+
+message LeagueSettingsRequest {
+  AuthToken auth_token = 1;
+  int32 league_id = 2;
+}
+
+message LeagueSettingsResponse {
+  LeagueBasicSettings basic_settings = 1;
+  TransactionSettings transaction_settings = 2;
+  WaiverSettings waiver_settings = 3;
+}
+
+message LeagueStandingsRequest {
+  AuthToken auth_token = 1;
+  int32 league_id = 2;
+}
+
+message LeagueStanding {
+  int32 rank = 1;
+  string username = 2;
+}
+
+message LeagueStandingsResponse {
+  repeated LeagueStanding league_standing = 1;
+}
+
+
