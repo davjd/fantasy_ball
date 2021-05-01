@@ -1,4 +1,6 @@
--- draft
+-- *************** SqlDBM: PostgreSQL ****************;
+-- ***************************************************;
+-- ************************************** draft
 CREATE TABLE IF NOT EXISTS draft (
     "id" serial NOT NULL,
     draft_type varchar(50) NOT NULL,

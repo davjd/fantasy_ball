@@ -1,4 +1,6 @@
--- waiver_settings
+-- *************** SqlDBM: PostgreSQL ****************;
+-- ***************************************************;
+-- ************************************** waiver_settings
 CREATE TABLE IF NOT EXISTS waiver_settings (
     "id" serial NOT NULL,
     waiver_delay integer NOT NULL,

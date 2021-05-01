@@ -1,4 +1,6 @@
--- match
+-- *************** SqlDBM: PostgreSQL ****************;
+-- ***************************************************;
+-- ************************************** match
 CREATE TABLE IF NOT EXISTS match (
     "id" serial NOT NULL,
     user_1_id integer NOT NULL,
@@ -11,8 +13,8 @@ CREATE TABLE IF NOT EXISTS match (
     CONSTRAINT FK_175 FOREIGN KEY (matchup_id) REFERENCES matchup ("id")
 );
 
-CREATE INDEX fkIdx_139 ON match (user_1_id);
+CREATE INDEX IF NOT EXISTS fkIdx_139 ON match (user_1_id);
 
-CREATE INDEX fkIdx_142 ON match (user_2_id);
+CREATE INDEX IF NOT EXISTS fkIdx_142 ON match (user_2_id);
 
-CREATE INDEX fkIdx_176 ON match (matchup_id);
+CREATE INDEX IF NOT EXISTS fkIdx_176 ON match (matchup_id);

@@ -1,4 +1,6 @@
--- league
+-- *************** SqlDBM: PostgreSQL ****************;
+-- ***************************************************;
+-- ************************************** league
 CREATE TABLE IF NOT EXISTS league (
     "id" serial NOT NULL,
     league_name varchar(50) NOT NULL,
@@ -9,6 +11,6 @@ CREATE TABLE IF NOT EXISTS league (
     CONSTRAINT FK_93 FOREIGN KEY (league_settings_id) REFERENCES league_settings ("id")
 );
 
-CREATE INDEX fkIdx_103 ON league (draft_id);
+CREATE INDEX IF NOT EXISTS fkIdx_103 ON league (draft_id);
 
-CREATE INDEX fkIdx_94 ON league (league_settings_id);
+CREATE INDEX IF NOT EXISTS fkIdx_94 ON league (league_settings_id);

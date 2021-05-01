@@ -1,0 +1,16 @@
+-- Deletes all created tables.
+DROP TABLE IF EXISTS draft_selection,
+draft,
+league_membership,
+league_settings,
+league,
+lineup_slot,
+match,
+matchup,
+profile_description,
+roster_member,
+standing,
+transaction_settings,
+user_account,
+user_auth_token,
+waiver_settings CASCADE;
