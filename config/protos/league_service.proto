@@ -81,6 +81,11 @@ service LeagueService {
   //
   // Returns list of standings.
   rpc GetLeagueStandings(LeagueStandingsRequest) returns (LeagueStandingsResponse) {}
+
+  // Retrieve the roster for the given user.
+  //
+  // Returns list of players and their information.
+  rpc GetRoster(RosterRequest) returns (RosterResponse) {}
 }
 
 message DefaultResponse {
@@ -112,7 +117,7 @@ message CreateUserAccountRequest {
 }
 
 message AuthToken {
-  int32 token = 1;
+  string token = 1;
 }
 
 message CreateLeagueRequest {
@@ -156,6 +161,11 @@ message DraftPickRequest {
   int32 pick_number = 2;
   int32 player_selected_id = 3;
   int32 league_id = 4;
+
+  // Possible positions this player can play.
+  // Format: 1:PG, 2:SG, 3:SF, 4:PF, 5:C
+  // e.g. '1,2,4' -> Player can play PG, SG, and PF.
+  string positions = 5;
 }
 
 message LineupSlot {
@@ -197,14 +207,13 @@ message MatchupResponse {
 
 message MatchRequest {
   AuthToken auth_token = 1;
-  int32 matchup_id = 2;
-  Date match_date = 3;
+  int32 match_id = 2;
 }
 
 message MatchResponse {
   int32 user_id_1 = 1;
   int32 user_id_2 = 2;
-  int32 match_id = 3;
+  Date match_date = 3;
 }
 
 message LineupRequest{
@@ -213,8 +222,8 @@ message LineupRequest{
 }
 
 message LineupResponse {
-  repeated LineupSlot lineup = 1;
-  int32 user_id = 2;
+  int32 user_id = 1;
+  repeated LineupSlot lineup = 2;
 }
 
 message LeagueSettingsRequest {
@@ -242,4 +251,22 @@ message LeagueStandingsResponse {
   repeated LeagueStanding league_standing = 1;
 }
 
+message RosterRequest {
+  AuthToken auth_token = 1;
+
+  // This sets a filter to return only players with the given status.
+  // Possible status include: 'available', 'dropped', 'traded'.
+  string status_filter = 2;
+}
+
+message RosterInfo {
+  int32 player_id = 1;
+  string status = 2;
+  string playable_positions = 3;
+  int32 roster_member_id = 4;
+}
+
+message RosterResponse {
+  repeated RosterInfo roster = 1;
+}
 

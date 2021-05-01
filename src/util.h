@@ -32,6 +32,8 @@ std::string base64_encode(const std::string &in);
 
 std::string base64_decode(const std::string &in);
 
+std::string get_uuid();
+
 namespace endpoint {
 // File path to file that contains mysportsfeeds api key.
 static const std::string msf_api_file_path = "config/mysportsfeeds_api_key.txt";

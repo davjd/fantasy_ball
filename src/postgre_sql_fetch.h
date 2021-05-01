@@ -20,6 +20,9 @@ public:
   // Create the necessary tables if needed.
   void CreateBaseTables(pqxx::work *work);
 
+  // Deletes all base tables.
+  void DeleteBaseTables(pqxx::work *work);
+
   // Returns the currently used postgre connection.
   pqxx::connection *GetCurrentConnection();
 
