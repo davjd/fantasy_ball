@@ -11,11 +11,9 @@ namespace fantasy_ball {
 LeagueFetcher::LeagueFetcher(PostgreSQLFetch *psql_fetcher)
     : psql_fetcher_(psql_fetcher) {}
 
-std::string LeagueFetcher::CreateUserAccount(const std::string &username,
-                                             const std::string &email,
-                                             const std::string &password,
-                                             const std::string &first_name,
-                                             const std::string &last_name) {
+void LeagueFetcher::CreateUserAccount(
+    const leagueservice::CreateUserAccountRequest *request,
+    leagueservice::AuthToken *reply) {
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
   const std::string insert_profile_description =
@@ -25,8 +23,9 @@ std::string LeagueFetcher::CreateUserAccount(const std::string &username,
       "INSERT into user_account(account_username, email, account_password, "
       "first_name, last_name, profile_description_id) values({}, {}, {}, {}, "
       "{}, {}) RETURNING id;",
-      W.quote(username), W.quote(email), W.quote(password), W.quote(first_name),
-      W.quote(last_name), profile_row[0].as<int>());
+      W.quote(request->username()), W.quote(request->email()),
+      W.quote(request->password()), W.quote(request->first_name()),
+      W.quote(request->last_name()), profile_row[0].as<int>());
   pqxx::row account_row = W.exec1(insert_account);
   std::string generated_token = get_uuid();
   const std::string insert_auth_token = fmt::format(
@@ -34,14 +33,15 @@ std::string LeagueFetcher::CreateUserAccount(const std::string &username,
       account_row[0].as<int>(), W.quote(generated_token));
   W.exec0(insert_auth_token);
   W.commit();
-  return generated_token;
+  reply->set_token(generated_token);
 }
 
-int LeagueFetcher::CreateLeague(std::string token,
-                                const std::string &league_name) {
-  int user_account_id = auth_token_to_account_id(token);
+void LeagueFetcher::CreateLeague(
+    const leagueservice::CreateLeagueRequest *request,
+    leagueservice::CreateLeagueResponse *reply) {
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
-    return 0;
+    return;
   }
   int league_settings_id = init_league_settings(user_account_id);
 
@@ -56,21 +56,25 @@ int LeagueFetcher::CreateLeague(std::string token,
   const std::string insert_league = fmt::format(
       "INSERT into league(league_name, league_settings_id, draft_id) "
       "values({}, {}, {}) RETURNING id;",
-      W.quote(league_name), league_settings_id, draft_row[0].as<int>());
+      W.quote(request->league_name()), league_settings_id,
+      draft_row[0].as<int>());
   pqxx::row league_row = W.exec1(insert_league);
   W.commit();
-  return league_row[0].as<int>();
+  reply->set_league_id(league_row[0].as<int>());
 }
 
-void LeagueFetcher::JoinLeague(std::string token, int league_id) {
-  if (league_id < 1) {
+void LeagueFetcher::JoinLeague(const leagueservice::JoinLeagueRequest *request,
+                               leagueservice::DefaultResponse *reply) {
+  if (request->league_id() < 1) {
+    reply->set_message("ERROR: Invalid league id.");
     return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
+    reply->set_message("ERROR: Invalid authentication token.");
     return;
   }
-  AddLeagueMember(user_account_id, league_id);
+  AddLeagueMember(user_account_id, request->league_id());
 }
 
 void LeagueFetcher::AddLeagueMember(int user_account_id, int league_id) {
@@ -86,62 +90,70 @@ void LeagueFetcher::AddLeagueMember(int user_account_id, int league_id) {
   W.commit();
 }
 
-void LeagueFetcher::MakeDraftPick(std::string token, int pick_number,
-                                  int player_id_selected, int league_id,
-                                  const std::string &positions_available) {
-  if (league_id < 1) {
+void LeagueFetcher::MakeDraftPick(
+    const leagueservice::DraftPickRequest *request,
+    leagueservice::DefaultResponse *reply) {
+  if (request->league_id() < 1) {
+    reply->set_message("ERROR: Invalid league id.");
     return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
+    reply->set_message("ERROR: Invalid authentication token.");
     return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
-  const std::string get_draft_id =
-      fmt::format("SELECT draft_id from league where id={};", league_id);
+  const std::string get_draft_id = fmt::format(
+      "SELECT draft_id from league where id={};", request->league_id());
   pqxx::row draft_row = W.exec1(get_draft_id);
   const std::string insert_draft_pick = fmt::format(
       "INSERT into draft_selection(pick_number, player_id, draft_id, "
       "user_account_id) values({}, {}, {}, {});",
-      pick_number, player_id_selected, draft_row[0].as<int>(), user_account_id);
+      request->pick_number(), request->player_selected_id(),
+      draft_row[0].as<int>(), user_account_id);
   W.exec0(insert_draft_pick);
   const std::string insert_roster_member = fmt::format(
       "INSERT into roster_member(player_id, user_account_id, league_id, "
       "status, playable_positions) values({}, {}, {}, {}, {});",
-      player_id_selected, user_account_id, league_id, W.quote("available"),
-      W.quote(positions_available));
+      request->player_selected_id(), user_account_id, request->league_id(),
+      W.quote("available"), W.quote(request->positions()));
   W.exec0(insert_roster_member);
   W.commit();
 }
 
 void LeagueFetcher::UpdateLineup(
-    std::string token, int lineup_slot_id,
-    const std::vector<LeagueFetcher::PlayerSlot> &lineup) {
-  if (lineup_slot_id < 1) {
+    const leagueservice::UpdateLineupRequest *request,
+    leagueservice::DefaultResponse *reply) {
+  if (request->lineup_size() == 0) {
+    reply->set_message("ERROR: Invalid lineup slot list.");
     return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
+    reply->set_message("ERROR: Invalid authentication token.");
     return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
   const std::string update_slot = "UPDATE lineup_slot SET player_id={} WHERE "
                                   "id={} AND user_account_id={};";
-  for (const auto &slot : lineup) {
+  for (const auto &slot : request->lineup()) {
+    // TODO: Add some strict checks here to ensure that the position isn't being
+    // changed with the new player set.
     const std::string &update_slot_player = fmt::format(
-        update_slot, slot.player_id, lineup_slot_id, user_account_id);
+        update_slot, slot.player_id(), slot.lineup_slot_id(), user_account_id);
     W.exec0(update_slot_player);
   }
   W.commit();
 }
 
-std::tuple<std::string, std::string, std::string, std::string>
-LeagueFetcher::GetBasicUserInformation(std::string token) {
-  int user_account_id = auth_token_to_account_id(token);
+void LeagueFetcher::GetBasicUserInformation(
+    const leagueservice::AuthToken *request,
+    leagueservice::BasicUserInformation *reply) {
+  int user_account_id = auth_token_to_account_id(request->token());
   if (!user_account_id) {
-    return {};
+    return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
@@ -151,20 +163,20 @@ LeagueFetcher::GetBasicUserInformation(std::string token) {
                   user_account_id);
   pqxx::row info_row = W.exec1(get_basic_info);
   W.commit();
-  return std::make_tuple(
-      info_row[0].as<std::string>(), info_row[1].as<std::string>(),
-      info_row[2].as<std::string>(), info_row[3].as<std::string>());
+  reply->set_username(info_row[0].as<std::string>());
+  reply->set_email(info_row[1].as<std::string>());
+  reply->set_first_name(info_row[2].as<std::string>());
+  reply->set_last_name(info_row[3].as<std::string>());
 }
 
-std::tuple<std::string, std::string, int, int, int, std::string, std::string,
-           int>
-LeagueFetcher::GetMatchup(std::string token, int week_num, int league_id) {
-  if (league_id < 1) {
-    return {};
+void LeagueFetcher::GetMatchup(const leagueservice::MatchupRequest *request,
+                               leagueservice::MatchupResponse *reply) {
+  if (request->league_id() < 1 || request->week_number() < 1) {
+    return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
-    return {};
+    return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
@@ -172,7 +184,8 @@ LeagueFetcher::GetMatchup(std::string token, int week_num, int league_id) {
       "SELECT user_1_id, user_2_id, score_1, score_2, ties_count, "
       "date_start, matchup_tag, matchup_id from matchup where user_1_id={} or "
       "user_id_2={} and week_num={} and league_id={};",
-      user_account_id, user_account_id, week_num, league_id);
+      user_account_id, user_account_id, request->week_number(),
+      request->league_id());
   pqxx::row matchup_row = W.exec1(get_matchup);
 
   const std::string get_username_1 =
@@ -184,68 +197,120 @@ LeagueFetcher::GetMatchup(std::string token, int week_num, int league_id) {
                   matchup_row[1].as<std::string>());
   pqxx::row username_2_row = W.exec1(get_username_2);
   W.commit();
-  return std::make_tuple(
-      username_1_row[0].as<std::string>(), username_2_row[0].as<std::string>(),
-      matchup_row[2].as<int>(), matchup_row[3].as<int>(),
-      matchup_row[4].as<int>(), matchup_row[5].as<std::string>(),
-      matchup_row[6].as<std::string>(), matchup_row[7].as<int>());
+  reply->set_username_1(username_1_row[0].as<std::string>());
+  reply->set_username_2(username_2_row[0].as<std::string>());
+  reply->set_score_1(matchup_row[2].as<int>());
+  reply->set_score_2(matchup_row[3].as<int>());
+  reply->set_ties_count(matchup_row[4].as<int>());
+  reply->set_date_start(matchup_row[5].as<std::string>());
+  reply->set_matchup_tag(matchup_row[6].as<std::string>());
+  reply->set_matchup_id(matchup_row[7].as<int>());
 }
 
-std::tuple<int, int, std::string> LeagueFetcher::GetMatch(std::string token,
-                                                          int match_id) {
-  if (match_id < 1) {
-    return {};
+void LeagueFetcher::GetMatch(const leagueservice::MatchRequest *request,
+                             leagueservice::MatchResponse *reply) {
+  if (request->match_id() < 1) {
+    return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
-    return {};
+    return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
   const std::string get_match = fmt::format(
       "SELECT user_id_1, user_id_2, match_date from match where match_id={};",
-      match_id);
+      request->match_id());
   pqxx::row match_row = W.exec1(get_match);
   W.commit();
-  return std::make_tuple(match_row[0].as<int>(), match_row[1].as<int>(),
-                         match_row[2].as<std::string>());
+  reply->set_user_id_1(match_row[0].as<int>());
+  reply->set_user_id_2(match_row[1].as<int>());
+  reply->set_match_date(match_row[2].as<std::string>());
 }
 
-std::tuple<int, std::vector<LeagueFetcher::PlayerSlot>>
-LeagueFetcher::GetLineup(std::string token, int match_id) {
-  if (match_id < 1) {
-    return {};
+void LeagueFetcher::GetLineup(const leagueservice::LineupRequest *request,
+                              leagueservice::LineupResponse *reply) {
+  if (request->match_id() < 1) {
+    return;
   }
-  int user_account_id = auth_token_to_account_id(token);
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
   if (!user_account_id) {
-    return {};
+    return;
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
   const std::string get_lineup =
       fmt::format("SELECT id, position, player_id, user_account_id from "
                   "lineup_slot where match_id={} and user_account_id={};",
-                  match_id, user_account_id);
+                  request->match_id(), user_account_id);
   pqxx::result lineup_result = W.exec(get_lineup);
   W.commit();
 
   // Go through each lineup slot and add it to the result tuple.
   int result_user_id;
-  std::vector<PlayerSlot> lineup_slots;
   if (lineup_result.empty() || lineup_result[3].empty()) {
-    return {};
+    return;
   } else {
     result_user_id = lineup_result[0][3].as<int>();
   }
-  auto result_tuple = std::make_tuple(result_user_id, lineup_slots);
+  reply->set_user_id(result_user_id);
   for (const auto &lineup_row : lineup_result) {
-    PlayerSlot slot = {};
-    slot.slot_id = lineup_row[0].as<int>();
-    slot.position = lineup_row[1].as<std::string>();
-    slot.player_id = lineup_row[2].as<int>();
-    std::get<1>(result_tuple).push_back(slot);
+    auto *lineup_slot = reply->add_lineup();
+    lineup_slot->set_lineup_slot_id(lineup_row[0].as<int>());
+    lineup_slot->set_position(lineup_row[1].as<std::string>());
+    lineup_slot->set_player_id(lineup_row[2].as<int>());
   }
-  return result_tuple;
+}
+
+void LeagueFetcher::GetRoster(const leagueservice::RosterRequest *request,
+                              leagueservice::RosterResponse *reply) {
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
+  if (!user_account_id) {
+    return;
+  }
+  auto *connection = psql_fetcher_->GetCurrentConnection();
+  pqxx::work W{*connection};
+  const std::string get_roster = fmt::format(
+      "SELECT player_id, status, playable_positions, id from "
+      "roster_member where user_account_id={} and league_id={}{}",
+      user_account_id, request->league_id(),
+      request->status_filter().empty()
+          ? ";" // Only add filter constraint if it was provided.
+          : fmt::format(" and status={};", request->status_filter()));
+  pqxx::result roster_result = W.exec(get_roster);
+  W.commit();
+  for (const auto &roster_row : roster_result) {
+    auto *roster_info = reply->add_roster();
+    roster_info->set_player_id(roster_row[0].as<int>());
+    roster_info->set_status(roster_row[1].as<std::string>());
+    roster_info->set_playable_positions(roster_row[2].as<std::string>());
+    roster_info->set_roster_member_id(roster_row[3].as<int>());
+  }
+}
+
+void LeagueFetcher::GetLeaguesForMember(
+    const leagueservice::LeaguesForMemberRequest *request,
+    leagueservice::LeaguesForMemberResponse *reply) {
+  int user_account_id = auth_token_to_account_id(request->auth_token().token());
+  if (!user_account_id) {
+    return;
+  }
+  auto *connection = psql_fetcher_->GetCurrentConnection();
+  pqxx::work W{*connection};
+  const std::string get_leagues =
+      fmt::format("SELECT league_id from league_membership where "
+                  "user_account_id={} and season_year={};",
+                  user_account_id, request->season_year());
+  pqxx::result league_result = W.exec(get_leagues);
+  W.commit();
+  for (const auto &league_row : league_result) {
+    const std::string get_league_name = fmt::format(
+        "SELECT league_name from league where id={};", league_row[0].as<int>());
+    pqxx::row name_row = W.exec1(get_league_name);
+    auto *league_description = reply->add_league_descriptions();
+    league_description->set_league_id(league_row[0].as<int>());
+    league_description->set_league_name(name_row[0].as<std::string>());
+  }
 }
 
 int LeagueFetcher::init_league_settings(int commissioner_id) {

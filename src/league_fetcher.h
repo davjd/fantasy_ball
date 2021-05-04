@@ -7,17 +7,12 @@
 #include <tuple>
 #include <vector>
 
+#include <proto/league_service.pb.h>
+
 namespace fantasy_ball {
 
 class LeagueFetcher {
 public:
-  struct PlayerSlot {
-    PlayerSlot() = default;
-    std::string player_id;
-    std::string position;
-    int slot_id;
-  };
-
   LeagueFetcher() = delete;
   ~LeagueFetcher() = default;
 
@@ -28,18 +23,17 @@ public:
   // Creates a new user account with the provided information.
   // Returns a generated unique authentication token that should be be used for
   // all calls to update and insert.
-  std::string CreateUserAccount(const std::string &username,
-                                const std::string &email,
-                                const std::string &password,
-                                const std::string &first_name,
-                                const std::string &last_name);
+  void CreateUserAccount(const leagueservice::CreateUserAccountRequest *request,
+                         leagueservice::AuthToken *reply);
 
   // Creates a new league with the provided information.
   // Returns the league id for the new league.
-  int CreateLeague(std::string token, const std::string &league_name);
+  void CreateLeague(const leagueservice::CreateLeagueRequest *request,
+                    leagueservice::CreateLeagueResponse *reply);
 
   // Adds the user for the given auth_token to the given league.
-  void JoinLeague(std::string token, int league_id);
+  void JoinLeague(const leagueservice::JoinLeagueRequest *request,
+                  leagueservice::DefaultResponse *reply);
 
   // Add the given user into the given league_id.
   // TODO: Add safety check to ensure that only the league commissioner can call
@@ -47,28 +41,36 @@ public:
   void AddLeagueMember(int user_account_id, int league_id);
 
   // Selects a player in the league's draft.
-  void MakeDraftPick(std::string token, int pick_number, int player_id_selected,
-                     int league_id, const std::string &positions_available);
+  void MakeDraftPick(const leagueservice::DraftPickRequest *request,
+                     leagueservice::DefaultResponse *reply);
 
   // Updates the user's lineup roster for the given matchup date.
-  void UpdateLineup(std::string token, int lineup_slot_id,
-                    const std::vector<PlayerSlot> &lineup);
+  void UpdateLineup(const leagueservice::UpdateLineupRequest *request,
+                    leagueservice::DefaultResponse *reply);
 
   // Get an information description for the requested user.
-  std::tuple<std::string, std::string, std::string, std::string>
-  GetBasicUserInformation(std::string token);
+  void GetBasicUserInformation(const leagueservice::AuthToken *request,
+                               leagueservice::BasicUserInformation *reply);
 
   // Get the specified matchup.
-  std::tuple<std::string, std::string, int, int, int, std::string, std::string,
-             int>
-  GetMatchup(std::string token, int week_num, int league_id);
+  void GetMatchup(const leagueservice::MatchupRequest *request,
+                  leagueservice::MatchupResponse *reply);
 
   // Get the specified match.
-  std::tuple<int, int, std::string> GetMatch(std::string token, int match_id);
+  void GetMatch(const leagueservice::MatchRequest *request,
+                leagueservice::MatchResponse *reply);
 
   // Get the lineup slots for a given match.
-  std::tuple<int, std::vector<PlayerSlot>> GetLineup(std::string token,
-                                                     int match_id);
+  void GetLineup(const leagueservice::LineupRequest *request,
+                 leagueservice::LineupResponse *reply);
+
+  // rpc GetRoster(RosterRequest) returns (RosterResponse)
+  void GetRoster(const leagueservice::RosterRequest *request,
+                 leagueservice::RosterResponse *reply);
+
+  void
+  GetLeaguesForMember(const leagueservice::LeaguesForMemberRequest *request,
+                      leagueservice::LeaguesForMemberResponse *reply);
 
   // TODO: Complete the other helper methods for the RPC service.
 
@@ -79,6 +81,9 @@ private:
 
   // Creates default league settings and variant settings, returns
   // league_settings_id.
+  //
+  // TODO: Much of this could be just setting up default values inside the
+  // create table script file.
   int init_league_settings(int commissioner_id);
 
   // Retrieves the user account if for the given auth token.
