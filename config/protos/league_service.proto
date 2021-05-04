@@ -86,26 +86,15 @@ service LeagueService {
   //
   // Returns list of players and their information.
   rpc GetRoster(RosterRequest) returns (RosterResponse) {}
+
+  // Retrieve the leagues in which this user is a member of.
+  //
+  // Returns list of league descriptions.
+  rpc GetLeaguesForMember(LeaguesForMemberRequest) returns (LeaguesForMemberResponse) {}
 }
 
 message DefaultResponse {
   string message = 1;
-}
-
-// Local copy of https://github.com/googleapis/googleapis/blob/master/google/type/date.proto.
-message Date {
-  // Year of the date. Must be from 1 to 9999, or 0 to specify a date without
-  // a year.
-  int32 year = 1;
-
-  // Month of a year. Must be from 1 to 12, or 0 to specify a year without a
-  // month and day.
-  int32 month = 2;
-
-  // Day of a month. Must be from 1 to 31 and valid for the year and month, or 0
-  // to specify a year by itself or a year and month where the day isn't
-  // significant.
-  int32 day = 3;
 }
 
 message CreateUserAccountRequest {
@@ -146,7 +135,7 @@ message TransactionSettings {
   string trade_review_type = 2;
   int32 trade_review_time = 3;
   int32 max_acquisitions = 4;
-  Date trade_deadline = 5;
+  string trade_deadline = 5;
   int32 max_injury_reserves = 6;
 }
 
@@ -176,7 +165,7 @@ message LineupSlot {
 
 message UpdateLineupRequest {
   AuthToken auth_token = 1;
-  Date matchup_date = 2;
+  string matchup_date = 2;
   repeated LineupSlot lineup = 3;
   int32 match_id = 4;
 }
@@ -200,7 +189,7 @@ message MatchupResponse {
   int32 score_1 = 3;
   int32 score_2 = 4;
   int32 ties_count = 5;
-  Date date_start = 6;
+  string date_start = 6;
   string matchup_tag = 7;
   int32 matchup_id = 8;
 }
@@ -213,7 +202,7 @@ message MatchRequest {
 message MatchResponse {
   int32 user_id_1 = 1;
   int32 user_id_2 = 2;
-  Date match_date = 3;
+  string match_date = 3;
 }
 
 message LineupRequest{
@@ -257,6 +246,7 @@ message RosterRequest {
   // This sets a filter to return only players with the given status.
   // Possible status include: 'available', 'dropped', 'traded'.
   string status_filter = 2;
+  int32 league_id = 3;
 }
 
 message RosterInfo {
@@ -268,5 +258,19 @@ message RosterInfo {
 
 message RosterResponse {
   repeated RosterInfo roster = 1;
+}
+
+message LeaguesForMemberRequest {
+  AuthToken auth_token = 1;
+  string season_year = 2;
+}
+
+message LeagueDescription {
+  int32 league_id = 1;
+  string league_name = 2;
+}
+
+message LeaguesForMemberResponse {
+  repeated LeagueDescription league_descriptions = 1; 
 }
 
