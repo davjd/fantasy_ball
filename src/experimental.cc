@@ -11,74 +11,41 @@
 
 #include <fmt/core.h>
 #include <pqxx/pqxx>
+#include <proto/league_service.pb.h>
 
 #include "league_fetcher.h"
 #include "postgre_sql_fetch.h"
 #include "util.h"
 
+#include "widgets/wxglade_out.h"
+
 // For compilers that support precompilation, includes "wx/wx.h".
-// #include <wx/wxprec.h>
-// #ifndef WX_PRECOMP
-// #include <wx/wx.h>
-// #endif
-// class MyApp : public wxApp
-// {
+#include <wx/wxprec.h>
+#ifndef WX_PRECOMP
+#include <wx/wx.h>
+#endif
+class MyApp : public wxApp {
+public:
+  virtual bool OnInit();
+};
+// class MyFrame : public wxFrame {
 // public:
-//     virtual bool OnInit();
-// };
-// class MyFrame : public wxFrame
-// {
-// public:
-//     MyFrame();
+//   MyFrame();
+
 // private:
-//     void OnHello(wxCommandEvent& event);
-//     void OnExit(wxCommandEvent& event);
-//     void OnAbout(wxCommandEvent& event);
+//   void OnHello(wxCommandEvent &event);
+//   void OnExit(wxCommandEvent &event);
+//   void OnAbout(wxCommandEvent &event);
 // };
-// enum
-// {
-//     ID_Hello = 1
-// };
-// wxIMPLEMENT_APP(MyApp);
-// bool MyApp::OnInit()
-// {
-//     MyFrame *frame = new MyFrame();
-//     frame->Show(true);
-//     return true;
-// }
-// MyFrame::MyFrame()
-//     : wxFrame(NULL, wxID_ANY, "Hello World")
-// {
-//     wxMenu *menuFile = new wxMenu;
-//     menuFile->Append(ID_Hello, "&Hello...\tCtrl-H",
-//                      "Help string shown in status bar for this menu item");
-//     menuFile->AppendSeparator();
-//     menuFile->Append(wxID_EXIT);
-//     wxMenu *menuHelp = new wxMenu;
-//     menuHelp->Append(wxID_ABOUT);
-//     wxMenuBar *menuBar = new wxMenuBar;
-//     menuBar->Append(menuFile, "&File");
-//     menuBar->Append(menuHelp, "&Help");
-//     SetMenuBar( menuBar );
-//     CreateStatusBar();
-//     SetStatusText("Welcome to wxWidgets!");
-//     Bind(wxEVT_MENU, &MyFrame::OnHello, this, ID_Hello);
-//     Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
-//     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
-// }
-// void MyFrame::OnExit(wxCommandEvent& event)
-// {
-//     Close(true);
-// }
-// void MyFrame::OnAbout(wxCommandEvent& event)
-// {
-//     wxMessageBox("This is a wxWidgets Hello World example",
-//                  "About Hello World", wxOK | wxICON_INFORMATION);
-// }
-// void MyFrame::OnHello(wxCommandEvent& event)
-// {
-//     wxLogMessage("Hello world from wxWidgets!");
-// }
+enum { ID_Login_Frame = 1 };
+wxIMPLEMENT_APP(MyApp);
+bool MyApp::OnInit() {
+  wxInitAllImageHandlers();
+  auto *frame = new LoginFrame(this->GetTopWindow(), ID_Login_Frame,
+                               wxT("Fantasy Ball League"));
+  frame->Show(true);
+  return true;
+}
 
 static std::string base64_encode(const std::string &in) {
 
@@ -358,41 +325,52 @@ std::string get_local_date_from_iso(std::string iso_date) {
 //   return 0;
 // }
 
-int main() {
-  // Create the psql_fetcher.
-  fantasy_ball::PostgreSQLFetch psql_fetch;
-  bool delete_tables = true;
-  bool db_init_success = psql_fetch.Init();
-  if (!db_init_success) {
-    std::cout << "Couldn't initialize PostgreSQL database." << std::endl;
-    return 0;
-  }
-  auto *connection = psql_fetch.GetCurrentConnection();
-  pqxx::work W{*connection};
-  if (delete_tables) {
-    psql_fetch.DeleteBaseTables(&W);
-  }
-  psql_fetch.CreateBaseTables(&W);
-  W.commit();
-  std::cout << "Completed psql_fetch initialization." << std::endl;
+// int main() {
+//   // Create the psql_fetcher.
+//   fantasy_ball::PostgreSQLFetch psql_fetch;
+//   bool delete_tables = false;
+//   bool db_init_success = psql_fetch.Init();
+//   if (!db_init_success) {
+//     std::cout << "Couldn't initialize PostgreSQL database." << std::endl;
+//     return 0;
+//   }
+//   // auto *connection = psql_fetch.GetCurrentConnection();
+//   // pqxx::work W{*connection};
+//   // if (delete_tables) {
+//   //   psql_fetch.DeleteBaseTables(&W);
+//   // }
+//   // psql_fetch.CreateBaseTables(&W);
+//   // W.commit();
+//   std::cout << "Completed psql_fetch initialization." << std::endl;
 
-  // Create the league fetcher.
-  fantasy_ball::LeagueFetcher league_fetcher(&psql_fetch);
-  std::string auth_token = league_fetcher.CreateUserAccount(
-      "me", "me@me.com", "password", "me", "em");
-  std::cout << "Added account." << std::endl;
-  int league_id = league_fetcher.CreateLeague(auth_token, "CISC. 4900");
-  std::cout << fmt::format("Created league with id {}.", league_id)
-            << std::endl;
-  auto basic_information = league_fetcher.GetBasicUserInformation(auth_token);
-  std::cout << fmt::format(
-                   "username: {}, email: {}, first_name: {}, last_name: {}.",
-                   std::get<0>(basic_information),
-                   std::get<1>(basic_information),
-                   std::get<2>(basic_information),
-                   std::get<3>(basic_information))
-            << std::endl;
-  league_fetcher.MakeDraftPick(auth_token, 1, 1, league_id, "1,2");
-  std::cout << "Added draft pick." << std::endl;
-  return 0;
-}
+//   // Create the league fetcher.
+//   fantasy_ball::LeagueFetcher league_fetcher(&psql_fetch);
+//   const leagueservice::RosterRequest request;
+//   leagueservice::RosterResponse reply;
+//   league_fetcher.GetRoster(&request, &reply);
+//   std::cout << fmt::format("Size of roster: {}.", reply.roster_size())
+//             << std::endl;
+//   for (const auto &slot : reply.roster()) {
+//     std::cout << fmt::format("player_id: {}", slot.player_id()) << std::endl;
+//   }
+
+//   // std::string auth_token = league_fetcher.CreateUserAccount(
+//   //     "me", "me@me.com", "password", "me", "em");
+//   // std::cout << "Added account." << std::endl;
+//   // int league_id = league_fetcher.CreateLeague(auth_token, "CISC. 4900");
+//   // std::cout << fmt::format("Created league with id {}.", league_id)
+//   //           << std::endl;
+//   // auto basic_information =
+//   // league_fetcher.GetBasicUserInformation(auth_token); std::cout <<
+//   // fmt::format(
+//   //                  "username: {}, email: {}, first_name: {}, last_name:
+//   {}.",
+//   //                  std::get<0>(basic_information),
+//   //                  std::get<1>(basic_information),
+//   //                  std::get<2>(basic_information),
+//   //                  std::get<3>(basic_information))
+//   //           << std::endl;
+//   // league_fetcher.MakeDraftPick(auth_token, 1, 1, league_id, "1,2");
+//   // std::cout << "Added draft pick." << std::endl;
+//   return 0;
+// }
