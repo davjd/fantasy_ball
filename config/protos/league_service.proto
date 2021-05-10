@@ -11,6 +11,11 @@ service LeagueService {
   // Returns a session token for the given user.
   rpc CreateUserAccount(CreateUserAccountRequest) returns (AuthToken) {}
 
+  // Logs in user using provided account information.
+  //
+  // Returns a session token for the given user.
+  rpc LoginUserAccount(LoginUserAccountRequest) returns (AuthToken) {}
+
   // Creates a fantasy league, with the client user being designated as owner.
   //
   // Returns the league id which can be distributed externally so others can join it.
@@ -107,6 +112,11 @@ message CreateUserAccountRequest {
 
 message AuthToken {
   string token = 1;
+}
+
+message LoginUserAccountRequest {
+  string username = 1;
+  string password = 2;
 }
 
 message CreateLeagueRequest {

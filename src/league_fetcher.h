@@ -3,11 +3,8 @@
 
 #include "postgre_sql_fetch.h"
 
-#include <string>
-#include <tuple>
-#include <vector>
-
 #include <proto/league_service.pb.h>
+#include <string>
 
 namespace fantasy_ball {
 
@@ -25,6 +22,10 @@ public:
   // all calls to update and insert.
   void CreateUserAccount(const leagueservice::CreateUserAccountRequest *request,
                          leagueservice::AuthToken *reply);
+
+  // Login using provide user account info. Returns an authentication code.
+  void LoginUserAccount(const leagueservice::LoginUserAccountRequest *request,
+                        leagueservice::AuthToken *reply);
 
   // Creates a new league with the provided information.
   // Returns the league id for the new league.

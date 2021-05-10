@@ -36,6 +36,25 @@ void LeagueFetcher::CreateUserAccount(
   reply->set_token(generated_token);
 }
 
+void LeagueFetcher::LoginUserAccount(
+    const leagueservice::LoginUserAccountRequest *request,
+    leagueservice::AuthToken *reply) {
+  auto *connection = psql_fetcher_->GetCurrentConnection();
+  pqxx::work W{*connection};
+  const std::string get_user_account_id =
+      fmt::format("SELECT id from user_account where account_username={} and "
+                  "account_password={};",
+                  request->username(), request->password());
+  pqxx::row id_row = W.exec1(get_user_account_id);
+  std::string generated_token = get_uuid();
+  const std::string insert_auth_token = fmt::format(
+      "INSERT into user_auth_token(user_account_id, token) values({}, {});",
+      id_row[0].as<int>(), W.quote(generated_token));
+  W.exec0(insert_auth_token);
+  W.commit();
+  reply->set_token(generated_token);
+}
+
 void LeagueFetcher::CreateLeague(
     const leagueservice::CreateLeagueRequest *request,
     leagueservice::CreateLeagueResponse *reply) {

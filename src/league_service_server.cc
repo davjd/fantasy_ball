@@ -8,6 +8,9 @@
 
 #include <proto/league_service.grpc.pb.h>
 
+#include "league_fetcher.h"
+#include "postgre_sql_fetch.h"
+
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -16,27 +19,36 @@ using grpc::Status;
 // Logic and data behind the server's behavior.
 class LeagueServiceImpl final : public leagueservice::LeagueService::Service {
 public:
-  // explicit LeagueServiceImpl(const std::string &db) {
-  //   filename = db;
-  // }
+  explicit LeagueServiceImpl(fantasy_ball::LeagueFetcher *league_fetcher) {
+    league_fetcher_ = league_fetcher;
+  }
 
   Status
   CreateUserAccount(ServerContext *context,
                     const leagueservice::CreateUserAccountRequest *request,
                     leagueservice::AuthToken *reply) override {
-    reply->set_token("100");
+    league_fetcher_->CreateUserAccount(request, reply);
+    return Status::OK;
+  }
+
+  Status LoginUserAccount(ServerContext *context,
+                          const leagueservice::LoginUserAccountRequest *request,
+                          leagueservice::AuthToken *reply) override {
+    league_fetcher_->LoginUserAccount(request, reply);
     return Status::OK;
   }
 
   Status CreateLeague(ServerContext *context,
                       const leagueservice::CreateLeagueRequest *request,
                       leagueservice::CreateLeagueResponse *reply) override {
+    league_fetcher_->CreateLeague(request, reply);
     return Status::OK;
   }
 
   Status JoinLeague(ServerContext *context,
                     const leagueservice::JoinLeagueRequest *request,
                     leagueservice::DefaultResponse *reply) override {
+    league_fetcher_->JoinLeague(request, reply);
     return Status::OK;
   }
 
@@ -63,12 +75,14 @@ public:
   Status MakeDraftPick(ServerContext *context,
                        const leagueservice::DraftPickRequest *request,
                        leagueservice::DefaultResponse *reply) override {
+    league_fetcher_->MakeDraftPick(request, reply);
     return Status::OK;
   }
 
   Status UpdateLineup(ServerContext *context,
                       const leagueservice::UpdateLineupRequest *request,
                       leagueservice::DefaultResponse *reply) override {
+    league_fetcher_->UpdateLineup(request, reply);
     return Status::OK;
   }
 
@@ -76,24 +90,28 @@ public:
   GetBasicUserInformation(ServerContext *context,
                           const leagueservice::AuthToken *request,
                           leagueservice::BasicUserInformation *reply) override {
+    league_fetcher_->GetBasicUserInformation(request, reply);
     return Status::OK;
   }
 
   Status GetMatchup(ServerContext *context,
                     const leagueservice::MatchupRequest *request,
                     leagueservice::MatchupResponse *reply) override {
+    league_fetcher_->GetMatchup(request, reply);
     return Status::OK;
   }
 
   Status GetMatch(ServerContext *context,
                   const leagueservice::MatchRequest *request,
                   leagueservice::MatchResponse *reply) override {
+    league_fetcher_->GetMatch(request, reply);
     return Status::OK;
   }
 
   Status GetLineup(ServerContext *context,
                    const leagueservice::LineupRequest *request,
                    leagueservice::LineupResponse *reply) override {
+    league_fetcher_->GetLineup(request, reply);
     return Status::OK;
   }
 
@@ -114,6 +132,7 @@ public:
   Status GetRoster(ServerContext *context,
                    const leagueservice::RosterRequest *request,
                    leagueservice::RosterResponse *reply) override {
+    league_fetcher_->GetRoster(request, reply);
     return Status::OK;
   }
 
@@ -121,18 +140,22 @@ public:
   GetLeaguesForMember(ServerContext *context,
                       const leagueservice::LeaguesForMemberRequest *request,
                       leagueservice::LeaguesForMemberResponse *reply) override {
+    league_fetcher_->GetLeaguesForMember(request, reply);
     return Status::OK;
   }
 
 private:
-  std::string filename;
+  fantasy_ball::LeagueFetcher *league_fetcher_;
 };
 
 int main(int argc, char *argv[]) {
   ServerBuilder builder;
   builder.AddListeningPort("0.0.0.0:50051", grpc::InsecureServerCredentials());
 
-  LeagueServiceImpl my_service;
+  fantasy_ball::PostgreSQLFetch psql_fetch;
+  // TODO: Insert init call here, but first finalize the init workflow.
+  fantasy_ball::LeagueFetcher league_fetcher(&psql_fetch);
+  LeagueServiceImpl my_service(&league_fetcher);
   builder.RegisterService(&my_service);
 
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
