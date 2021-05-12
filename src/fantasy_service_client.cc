@@ -8,6 +8,26 @@ FantasyServiceClient::FantasyServiceClient(
     std::shared_ptr<grpc::Channel> channel)
     : league_stub_(leagueservice::LeagueService::NewStub(channel)) {}
 
+std::string FantasyServiceClient::RegisterAccount(
+    const std::string &username, const std::string &email,
+    const std::string &password, const std::string &first_name,
+    const std::string &last_name) {
+  leagueservice::CreateUserAccountRequest req;
+  leagueservice::AuthToken result;
+  grpc::ClientContext context;
+
+  req.set_username(username);
+  req.set_email(email);
+  req.set_password(password);
+  req.set_first_name(first_name);
+  req.set_last_name(last_name);
+  grpc::Status status = league_stub_->CreateUserAccount(&context, req, &result);
+  if (!status.ok()) {
+    return status.error_message();
+  }
+  return result.token();
+}
+
 std::string FantasyServiceClient::Login(const std::string &username,
                                         const std::string &password) {
   leagueservice::LoginUserAccountRequest req;
@@ -17,6 +37,9 @@ std::string FantasyServiceClient::Login(const std::string &username,
   req.set_username(username);
   req.set_password(password);
   grpc::Status status = league_stub_->LoginUserAccount(&context, req, &result);
+  if (!status.ok()) {
+    return status.error_message();
+  }
   return result.token();
 }
 

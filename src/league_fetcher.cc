@@ -14,99 +14,120 @@ LeagueFetcher::LeagueFetcher(PostgreSQLFetch *psql_fetcher)
 void LeagueFetcher::CreateUserAccount(
     const leagueservice::CreateUserAccountRequest *request,
     leagueservice::AuthToken *reply) {
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  const std::string insert_profile_description =
-      "INSERT into profile_description default values RETURNING id;";
-  pqxx::row profile_row = W.exec1(insert_profile_description);
-  const std::string insert_account = fmt::format(
-      "INSERT into user_account(account_username, email, account_password, "
-      "first_name, last_name, profile_description_id) values({}, {}, {}, {}, "
-      "{}, {}) RETURNING id;",
-      W.quote(request->username()), W.quote(request->email()),
-      W.quote(request->password()), W.quote(request->first_name()),
-      W.quote(request->last_name()), profile_row[0].as<int>());
-  pqxx::row account_row = W.exec1(insert_account);
-  std::string generated_token = get_uuid();
-  const std::string insert_auth_token = fmt::format(
-      "INSERT into user_auth_token(user_account_id, token) values({}, {});",
-      account_row[0].as<int>(), W.quote(generated_token));
-  W.exec0(insert_auth_token);
-  W.commit();
-  reply->set_token(generated_token);
+  try {
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    const std::string insert_profile_description =
+        "INSERT into profile_description default values RETURNING id;";
+    pqxx::row profile_row = W.exec1(insert_profile_description);
+    const std::string insert_account = fmt::format(
+        "INSERT into user_account(account_username, email, account_password, "
+        "first_name, last_name, profile_description_id) values({}, {}, {}, {}, "
+        "{}, {}) RETURNING id;",
+        W.quote(request->username()), W.quote(request->email()),
+        W.quote(request->password()), W.quote(request->first_name()),
+        W.quote(request->last_name()), profile_row[0].as<int>());
+    pqxx::row account_row = W.exec1(insert_account);
+    std::string generated_token = get_uuid();
+    const std::string insert_auth_token = fmt::format(
+        "INSERT into user_auth_token(user_account_id, token) values({}, {});",
+        account_row[0].as<int>(), W.quote(generated_token));
+    W.exec0(insert_auth_token);
+    W.commit();
+    reply->set_token(generated_token);
+  } catch (std::exception const &e) {
+    reply->set_token("0");
+  }
 }
 
 void LeagueFetcher::LoginUserAccount(
     const leagueservice::LoginUserAccountRequest *request,
     leagueservice::AuthToken *reply) {
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  const std::string get_user_account_id =
-      fmt::format("SELECT id from user_account where account_username={} and "
-                  "account_password={};",
-                  request->username(), request->password());
-  pqxx::row id_row = W.exec1(get_user_account_id);
-  std::string generated_token = get_uuid();
-  const std::string insert_auth_token = fmt::format(
-      "INSERT into user_auth_token(user_account_id, token) values({}, {});",
-      id_row[0].as<int>(), W.quote(generated_token));
-  W.exec0(insert_auth_token);
-  W.commit();
-  reply->set_token(generated_token);
+  try {
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    const std::string get_user_account_id =
+        fmt::format("SELECT id from user_account where account_username={} and "
+                    "account_password={};",
+                    W.quote(request->username()), W.quote(request->password()));
+    pqxx::row id_row = W.exec1(get_user_account_id);
+    std::string generated_token = get_uuid();
+    const std::string insert_auth_token = fmt::format(
+        "INSERT into user_auth_token(user_account_id, token) values({}, {});",
+        id_row[0].as<int>(), W.quote(generated_token));
+    W.exec0(insert_auth_token);
+    W.commit();
+    reply->set_token(generated_token);
+  } catch (std::exception const &e) {
+    reply->set_token("0");
+  }
 }
 
 void LeagueFetcher::CreateLeague(
     const leagueservice::CreateLeagueRequest *request,
     leagueservice::CreateLeagueResponse *reply) {
-  int user_account_id = auth_token_to_account_id(request->auth_token().token());
-  if (!user_account_id) {
-    return;
-  }
-  int league_settings_id = init_league_settings(user_account_id);
+  try {
+    int user_account_id =
+        auth_token_to_account_id(request->auth_token().token());
+    if (!user_account_id) {
+      return;
+    }
+    int league_settings_id = init_league_settings(user_account_id);
 
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  // Create a default draft for the new league.
-  const std::string insert_draft = fmt::format(
-      "INSERT into draft(draft_type, draft_date, draft_time_allowed) "
-      "values('standard', '2020-01-01', 60) RETURNING id;");
-  pqxx::row draft_row = W.exec1(insert_draft);
-  // Create the league with the default settings.
-  const std::string insert_league = fmt::format(
-      "INSERT into league(league_name, league_settings_id, draft_id) "
-      "values({}, {}, {}) RETURNING id;",
-      W.quote(request->league_name()), league_settings_id,
-      draft_row[0].as<int>());
-  pqxx::row league_row = W.exec1(insert_league);
-  W.commit();
-  reply->set_league_id(league_row[0].as<int>());
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    // Create a default draft for the new league.
+    const std::string insert_draft = fmt::format(
+        "INSERT into draft(draft_type, draft_date, draft_time_allowed) "
+        "values('standard', '2020-01-01', 60) RETURNING id;");
+    pqxx::row draft_row = W.exec1(insert_draft);
+    // Create the league with the default settings.
+    const std::string insert_league = fmt::format(
+        "INSERT into league(league_name, league_settings_id, draft_id) "
+        "values({}, {}, {}) RETURNING id;",
+        W.quote(request->league_name()), league_settings_id,
+        draft_row[0].as<int>());
+    pqxx::row league_row = W.exec1(insert_league);
+    W.commit();
+    reply->set_league_id(league_row[0].as<int>());
+  } catch (std::exception const &e) {
+    reply->set_league_id(0);
+  }
 }
 
 void LeagueFetcher::JoinLeague(const leagueservice::JoinLeagueRequest *request,
                                leagueservice::DefaultResponse *reply) {
-  if (request->league_id() < 1) {
-    reply->set_message("ERROR: Invalid league id.");
-    return;
+  try {
+    if (request->league_id() < 1) {
+      reply->set_message("ERROR: Invalid league id.");
+      return;
+    }
+    int user_account_id =
+        auth_token_to_account_id(request->auth_token().token());
+    if (!user_account_id) {
+      reply->set_message("ERROR: Invalid authentication token.");
+      return;
+    }
+    AddLeagueMember(user_account_id, request->league_id());
+  } catch (std::exception const &e) {
+    reply->set_message("ERROR: Internal error.");
   }
-  int user_account_id = auth_token_to_account_id(request->auth_token().token());
-  if (!user_account_id) {
-    reply->set_message("ERROR: Invalid authentication token.");
-    return;
-  }
-  AddLeagueMember(user_account_id, request->league_id());
 }
 
 void LeagueFetcher::AddLeagueMember(int user_account_id, int league_id) {
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  // TODO: Add safety checks to ensure that this insertion isn't violating the
-  // league size constraint.
-  const std::string insert_league =
-      fmt::format("INSERT into league_membership(league_id, user_accound_id) "
-                  "values({}, {});",
-                  league_id, user_account_id);
-  W.exec0(insert_league);
-  W.commit();
+  try {
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    // TODO: Add safety checks to ensure that this insertion isn't violating the
+    // league size constraint.
+    const std::string insert_league =
+        fmt::format("INSERT into league_membership(league_id, user_accound_id) "
+                    "values({}, {});",
+                    league_id, user_account_id);
+    W.exec0(insert_league);
+    W.commit();
+  } catch (std::exception const &e) {
+  }
 }
 
 void LeagueFetcher::MakeDraftPick(
@@ -333,42 +354,51 @@ void LeagueFetcher::GetLeaguesForMember(
 }
 
 int LeagueFetcher::init_league_settings(int commissioner_id) {
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  // Insert default waiver_settings.
-  const std::string insert_waiver_settings =
-      "INSERT into waiver_settings(waiver_delay, waiver_type) values(2, "
-      "'standard') RETURNING id;";
-  pqxx::row waiver_row = W.exec1(insert_waiver_settings);
-  // Insert default transaction_settings.
-  const std::string insert_transaction_settings =
-      "INSERT into transaction_settings(trade_review_type, trade_review_time, "
-      "max_acquisitions_per_matchup, trade_deadline, max_injury_reserves) "
-      "values('standard', 2, 4, '2020-01-01', 3) RETURNING id;";
-  pqxx::row transaction_row = W.exec1(insert_transaction_settings);
-  // Insert league_settings using the default created waiver & transaction
-  // settings.
-  const std::string insert_league_settings = fmt::format(
-      "INSERT into league_settings(league_type, max_users, logo_url, "
-      "waiver_settings_id, transaction_settings_id, commissioner_account_id) "
-      "values('head-to-head.standard', 2, '', {}, {}, {}) RETURNING id;",
-      waiver_row[0].as<int>(), transaction_row[0].as<int>(), commissioner_id);
-  pqxx::row settings_row = W.exec1(insert_league_settings);
-  W.commit();
-  return settings_row[0].as<int>();
+  try {
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    // Insert default waiver_settings.
+    const std::string insert_waiver_settings =
+        "INSERT into waiver_settings(waiver_delay, waiver_type) values(2, "
+        "'standard') RETURNING id;";
+    pqxx::row waiver_row = W.exec1(insert_waiver_settings);
+    // Insert default transaction_settings.
+    const std::string insert_transaction_settings =
+        "INSERT into transaction_settings(trade_review_type, "
+        "trade_review_time, "
+        "max_acquisitions_per_matchup, trade_deadline, max_injury_reserves) "
+        "values('standard', 2, 4, '2020-01-01', 3) RETURNING id;";
+    pqxx::row transaction_row = W.exec1(insert_transaction_settings);
+    // Insert league_settings using the default created waiver & transaction
+    // settings.
+    const std::string insert_league_settings = fmt::format(
+        "INSERT into league_settings(league_type, max_users, logo_url, "
+        "waiver_settings_id, transaction_settings_id, commissioner_account_id) "
+        "values('head-to-head.standard', 2, '', {}, {}, {}) RETURNING id;",
+        waiver_row[0].as<int>(), transaction_row[0].as<int>(), commissioner_id);
+    pqxx::row settings_row = W.exec1(insert_league_settings);
+    W.commit();
+    return settings_row[0].as<int>();
+  } catch (std::exception const &e) {
+    return 0;
+  }
 }
 
 int LeagueFetcher::auth_token_to_account_id(std::string token) {
-  auto *connection = psql_fetcher_->GetCurrentConnection();
-  pqxx::work W{*connection};
-  const std::string sql_select =
-      fmt::format("SELECT user_account_id from user_auth_token WHERE token={};",
-                  W.quote(token));
-  pqxx::row r = W.exec1(sql_select);
-  W.commit();
-  if (r.empty()) {
+  try {
+    auto *connection = psql_fetcher_->GetCurrentConnection();
+    pqxx::work W{*connection};
+    const std::string sql_select = fmt::format(
+        "SELECT user_account_id from user_auth_token WHERE token={};",
+        W.quote(token));
+    pqxx::row r = W.exec1(sql_select);
+    W.commit();
+    if (r.empty()) {
+      return 0;
+    }
+    return r[0].as<int>();
+  } catch (std::exception const &e) {
     return 0;
   }
-  return r[0].as<int>();
 }
 } // namespace fantasy_ball

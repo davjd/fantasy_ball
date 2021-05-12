@@ -16,6 +16,12 @@ public:
   FantasyServiceClient(std::shared_ptr<grpc::Channel> channel);
   ~FantasyServiceClient() = default;
 
+  std::string RegisterAccount(const std::string &username,
+                              const std::string &email,
+                              const std::string &password,
+                              const std::string &first_name,
+                              const std::string &last_name);
+
   std::string Login(const std::string &username, const std::string &password);
 
   std::vector<leagueservice::RosterInfo>
