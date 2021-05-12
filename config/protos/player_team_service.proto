@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package playerteamservice;
+
+// Interface exported by the server.
+service PlayerTeamService {
+  // RPC service providing functionalities regarding leagues.
+  //
+  // Adds a player to the fetch batch with the given config.
+  //
+  // Returns a default reply.
+  rpc AddPlayerToFetch(CreateUserAccountRequest) returns (AuthToken) {}
+
+  // Retrieves the player log with the given id.
+  //
+  // Returns a daily player log.
+  rpc FetchLog(LoginUserAccountRequest) returns (AuthToken) {}
+
+  // Creates a fantasy league, with the client user being designated as owner.
+  //
+  // Returns a list of daily player logs.
+  rpc FetchLogsForConfig(CreateLeagueRequest) returns (CreateLeagueResponse) {}
+}
+
+message DefaultResponse {
+  string message = 1;
+}
+
+message RosterResponse {
+  repeated RosterInfo roster = 1;
+}
+
