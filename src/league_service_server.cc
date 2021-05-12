@@ -148,12 +148,33 @@ private:
   fantasy_ball::LeagueFetcher *league_fetcher_;
 };
 
+// Helper to initialize the Postgre database.
+bool InitDB(fantasy_ball::PostgreSQLFetch *psql_fetch,
+            bool delete_tables = false) {
+  bool db_init_success = psql_fetch->Init();
+  if (!db_init_success) {
+    std::cout << "Couldn't initialize PostgreSQL database." << std::endl;
+    return false;
+  }
+  auto *connection = psql_fetch->GetCurrentConnection();
+  pqxx::work W{*connection};
+  if (delete_tables) {
+    psql_fetch->DeleteBaseTables(&W);
+  }
+  psql_fetch->CreateBaseTables(&W);
+  W.commit();
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   ServerBuilder builder;
   builder.AddListeningPort("0.0.0.0:50051", grpc::InsecureServerCredentials());
 
   fantasy_ball::PostgreSQLFetch psql_fetch;
-  // TODO: Insert init call here, but first finalize the init workflow.
+  bool init_success = InitDB(&psql_fetch, true);
+  if (!init_success) {
+    return 0;
+  }
   fantasy_ball::LeagueFetcher league_fetcher(&psql_fetch);
   LeagueServiceImpl my_service(&league_fetcher);
   builder.RegisterService(&my_service);

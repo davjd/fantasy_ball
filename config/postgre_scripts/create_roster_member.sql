@@ -13,6 +13,6 @@ CREATE TABLE IF NOT EXISTS roster_member (
     CONSTRAINT FK_231 FOREIGN KEY (league_id) REFERENCES league ("id")
 );
 
-CREATE INDEX fkIdx_229 ON roster_member (user_account_id);
+CREATE INDEX IF NOT EXISTS fkIdx_229 ON roster_member (user_account_id);
 
-CREATE INDEX fkIdx_232 ON roster_member (league_id);
+CREATE INDEX IF NOT EXISTS fkIdx_232 ON roster_member (league_id);
