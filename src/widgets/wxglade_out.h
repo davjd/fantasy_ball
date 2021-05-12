@@ -52,9 +52,9 @@ public:
 
     RegisterFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
 
-private:
+// private:
 
-protected:
+// protected:
     // begin wxGlade: RegisterFrame::attributes
     wxPanel* panel_1;
     wxTextCtrl* username_input;

@@ -5,6 +5,7 @@
 #include "wxglade_out.h"
 
 #include <grpcpp/create_channel.h>
+#include <wx/msgout.h>
 
 // For compilers that support precompilation, includes "wx/wx.h".
 #include <wx/wxprec.h>
@@ -33,6 +34,7 @@ private:
   void OpenRegisterInterface(wxCommandEvent &event);
 
   void LoginUser(wxCommandEvent &event);
+  void RegisterUser(wxCommandEvent &event);
 };
 // class MyFrame : public wxFrame {
 // public:
@@ -67,6 +69,8 @@ bool FantasyApp::OnInit() {
                                      this);
   login_frame_->register_button->Bind(wxEVT_BUTTON,
                                       &FantasyApp::OpenRegisterInterface, this);
+  register_frame_->register_button->Bind(wxEVT_BUTTON,
+                                         &FantasyApp::RegisterUser, this);
 
   // Determine which initial page to show.
   if (account_manager_->HasSession()) {
@@ -104,9 +108,38 @@ void FantasyApp::LoginUser(wxCommandEvent &event) {
   auto password = this->login_frame_->password_input->GetValue().ToStdString();
   if (username.empty() || password.empty()) {
     DisplayLoginErrorLabel(true);
+    return;
+  }
+  // Send the request to the league server.
+  auto token = fantasy_client_->Login(username, password);
+  if (token == "0") {
+    // An error occured, so display error message.
+    DisplayLoginErrorLabel(true);
   } else {
     DisplayLoginErrorLabel(false);
   }
+  wxMessageOutput::Get()->Printf("Token[%i]: %s", token.empty(), token);
+}
+
+void FantasyApp::RegisterUser(wxCommandEvent &event) {
+  auto username =
+      this->register_frame_->username_input->GetValue().ToStdString();
+  auto password =
+      this->register_frame_->password_input->GetValue().ToStdString();
+  auto email = this->register_frame_->email_input->GetValue().ToStdString();
+  auto first_name =
+      this->register_frame_->first_name_input->GetValue().ToStdString();
+  auto last_name =
+      this->register_frame_->last_name_input->GetValue().ToStdString();
+  if (username.empty() || password.empty() || email.empty() ||
+      first_name.empty() || last_name.empty()) {
+    return;
+  }
+  // Register the account, by sending request.
+  auto token = fantasy_client_->RegisterAccount(username, email, password,
+                                                first_name, last_name);
+  // TODO: Send JoinLeague request if league id was provided.
+  wxMessageOutput::Get()->Printf("Token[%i]: %s", token.empty(), token);
 }
 
 void FantasyApp::DisplayLoginErrorLabel(bool show) {
