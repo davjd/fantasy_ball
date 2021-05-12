@@ -19,6 +19,20 @@ public:
 private:
   fantasy_ball::AccountManager *account_manager_;
   fantasy_ball::FantasyServiceClient *fantasy_client_;
+
+  // The different frames we'll be showing.
+  LoginFrame *login_frame_;
+  MatchupFrame *matchup_frame_;
+  RegisterFrame *register_frame_;
+
+  void DisplayLoginErrorLabel(bool show);
+
+  // Custom event handlers.
+  void OpenMainInterface(wxCommandEvent &event);
+  void OpenLoginInterface(wxCommandEvent &event);
+  void OpenRegisterInterface(wxCommandEvent &event);
+
+  void LoginUser(wxCommandEvent &event);
 };
 // class MyFrame : public wxFrame {
 // public:
@@ -29,7 +43,7 @@ private:
 //   void OnExit(wxCommandEvent &event);
 //   void OnAbout(wxCommandEvent &event);
 // };
-enum { ID_Login_Frame = 1, ID_Matchup_Frame };
+enum { ID_Login_Frame = 1, ID_Register_Frame, ID_Matchup_Frame };
 wxIMPLEMENT_APP(FantasyApp);
 bool FantasyApp::OnInit() {
   // Initialize needed stuff.
@@ -39,19 +53,64 @@ bool FantasyApp::OnInit() {
       "localhost:50051", grpc::InsecureChannelCredentials()));
 
   // Create all the UI frames.
-  auto *login_frame = new LoginFrame(this->GetTopWindow(), ID_Login_Frame,
-                                     wxT("Fantasy Ball League"));
-  auto *matchup_frame = new MatchupFrame(this->GetTopWindow(), ID_Matchup_Frame,
-                                         wxT("Fantasy Ball League"));
+  login_frame_ = new LoginFrame(this->GetTopWindow(), ID_Login_Frame,
+                                wxT("Fantasy Ball League"));
+  DisplayLoginErrorLabel(false);
+  register_frame_ = new RegisterFrame(this->GetTopWindow(), ID_Register_Frame,
+                                      wxT("Fantasy Ball League"));
+  matchup_frame_ = new MatchupFrame(this->GetTopWindow(), ID_Matchup_Frame,
+                                    wxT("Fantasy Ball League"));
+
+  // Bind events. We do this here because the parent can modify the children
+  // widgets/frames.
+  login_frame_->sign_in_button->Bind(wxEVT_BUTTON, &FantasyApp::LoginUser,
+                                     this);
+  login_frame_->register_button->Bind(wxEVT_BUTTON,
+                                      &FantasyApp::OpenRegisterInterface, this);
 
   // Determine which initial page to show.
   if (account_manager_->HasSession()) {
-    matchup_frame->Show(true);
+    matchup_frame_->Show(true);
   } else {
-    login_frame->Show(true);
+    login_frame_->Show(true);
   }
   this->GetTopWindow()->Centre();
   return true;
+}
+
+void FantasyApp::OpenMainInterface(wxCommandEvent &event) {
+  this->login_frame_->Show(false);
+  this->register_frame_->Show(false);
+  this->matchup_frame_->Show(true);
+  this->GetTopWindow()->Centre();
+}
+
+void FantasyApp::OpenLoginInterface(wxCommandEvent &event) {
+  this->login_frame_->Show(true);
+  this->register_frame_->Show(false);
+  this->matchup_frame_->Show(false);
+  this->GetTopWindow()->Centre();
+}
+void FantasyApp::OpenRegisterInterface(wxCommandEvent &event) {
+  this->login_frame_->Show(false);
+  this->register_frame_->Show(true);
+  this->matchup_frame_->Show(false);
+  this->GetTopWindow()->Centre();
+}
+
+void FantasyApp::LoginUser(wxCommandEvent &event) {
+  // Use the input and send a login request to the service.
+  auto username = this->login_frame_->username_input->GetValue().ToStdString();
+  auto password = this->login_frame_->password_input->GetValue().ToStdString();
+  if (username.empty() || password.empty()) {
+    DisplayLoginErrorLabel(true);
+  } else {
+    DisplayLoginErrorLabel(false);
+  }
+}
+
+void FantasyApp::DisplayLoginErrorLabel(bool show) {
+  this->login_frame_->login_error_message_sizer->Show(show);
 }
 
 int FantasyApp::OnExit() {
