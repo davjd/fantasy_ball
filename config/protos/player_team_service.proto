@@ -2,31 +2,81 @@ syntax = "proto3";
 
 package playerteamservice;
 
-// Interface exported by the server.
 service PlayerTeamService {
-  // RPC service providing functionalities regarding leagues.
+  // RPC service providing functionalities regarding NBA data.
   //
   // Adds a player to the fetch batch with the given config.
   //
-  // Returns a default reply.
-  rpc AddPlayerToFetch(CreateUserAccountRequest) returns (AuthToken) {}
+  // Returns a default response.
+  rpc AddPlayerToFetch(AddPlayerRequest) returns (DefaultResponse) {}
 
   // Retrieves the player log with the given id.
   //
   // Returns a daily player log.
-  rpc FetchLog(LoginUserAccountRequest) returns (AuthToken) {}
+  rpc FetchLog(LogRequest) returns (LogResponse) {}
 
-  // Creates a fantasy league, with the client user being designated as owner.
+  // Retrieves the daily player log for the given config.
   //
   // Returns a list of daily player logs.
-  rpc FetchLogsForConfig(CreateLeagueRequest) returns (CreateLeagueResponse) {}
+  rpc FetchLogsForConfig(LogsForConfigRequest) returns (LogsForConfigResponse) {}
 }
 
 message DefaultResponse {
-  string message = 1;
+    string message = 1;
 }
 
-message RosterResponse {
-  repeated RosterInfo roster = 1;
+message FetchConfig {
+    string date = 1;
+    string version = 2;
+    string season_start = 3;
+    boolean strict = 4;
+}
+
+message PlayerDescription {
+    string player_id = 1;
+    string first_name = 2;
+    string last_name = 3;
+}
+
+message RequiredHeadToHeadData {
+    int32 points = 1;
+    int32 rebounds = 2;
+    int32 assists = 3;
+    int32 blocks = 4;
+    int32 steals = 5;
+    int32 turnover = 6;
+}
+
+message TeamEventData {
+    string home_team = 1;
+    int32 home_team_id = 2;
+    string away_team = 3;
+    int32 away_team_id = 4;
+    int32 home_score = 5;
+    int32 away_score = 6;
+    int32 event_id = 7;
+}
+
+message AddPlayerRequest {
+    PlayerDescription player_description = 1;
+    FetchConfig config = 2;
+}
+
+message LogRequest {
+    int32 player_id = 1;
+    FetchConfig config = 2;
+}
+
+message LogResponse {
+    RequiredHeadToHeadData player_data = 1;
+    TeamEventData team_data = 2;
+}
+
+message LogsForConfigRequest {
+    FetchConfig config = 1;
+}
+
+message LogsForConfigResponse {
+    repeated LogResponse player_logs = 1;
 }
 
