@@ -29,7 +29,7 @@ message FetchConfig {
     string date = 1;
     string version = 2;
     string season_start = 3;
-    boolean strict = 4;
+    bool strict = 4;
 }
 
 message PlayerDescription {

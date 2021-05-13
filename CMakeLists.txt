@@ -19,12 +19,18 @@ set(HEADER_FILES src/util.cc
                  src/account_manager.cc
 )
 
-set(SERVER_SOURCES
+set(LEAGUE_SERVER_SOURCES
     src/league_service_server.cc
     src/util.cc
     src/curl_fetch.cc
     src/postgre_sql_fetch.cc 
     src/league_fetcher.cc
+)
+
+set(PLAYER_TEAM_SERVER_SOURCES
+    src/player_team_service_server.cc
+    src/util.cc
+    src/curl_fetch.cc
 )
 
 set(CLIENT_SOURCES
@@ -59,11 +65,17 @@ set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:grpc_cpp_plugin>)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/proto)
 get_filename_component(league_service_proto "config/protos/league_service.proto" ABSOLUTE)
 get_filename_component(league_service_proto_path "${league_service_proto}" PATH)
+get_filename_component(player_team_service_proto "config/protos/player_team_service.proto" ABSOLUTE)
+get_filename_component(player_team_service_proto_path "${player_team_service_proto}" PATH)
 # Generate protobufs.
 set(league_service_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/proto/league_service.pb.cc")
 set(league_service_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/proto/league_service.pb.h")
 set(league_service_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/proto/league_service.grpc.pb.cc")
 set(league_service_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/proto/league_service.grpc.pb.h")
+set(player_team_service_proto_srcs "${CMAKE_CURRENT_BINARY_DIR}/proto/player_team_service.pb.cc")
+set(player_team_service_proto_hdrs "${CMAKE_CURRENT_BINARY_DIR}/proto/player_team_service.pb.h")
+set(player_team_service_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/proto/player_team_service.grpc.pb.cc")
+set(player_team_service_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/proto/player_team_service.grpc.pb.h")
 message(STATUS "protoc: ${_PROTOBUF_PROTOC}")
 add_custom_command(
         OUTPUT "${league_service_proto_srcs}" "${league_service_proto_hdrs}" "${league_service_grpc_srcs}" "${league_service_grpc_hdrs}"
@@ -74,9 +86,25 @@ add_custom_command(
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
         "${league_service_proto}"
         DEPENDS "${league_service_proto}")
+add_custom_command(
+  OUTPUT "${player_team_service_proto_srcs}" "${player_team_service_proto_hdrs}" "${player_team_service_grpc_srcs}" "${player_team_service_grpc_hdrs}"
+  COMMAND ${_PROTOBUF_PROTOC}
+  ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}/proto"
+  --cpp_out "${CMAKE_CURRENT_BINARY_DIR}/proto"
+  -I "${player_team_service_proto_path}"
+  --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
+  "${player_team_service_proto}"
+  DEPENDS "${player_team_service_proto}")
 add_library(league_service_proto_library ${league_service_proto_srcs} ${league_service_grpc_srcs})
 target_include_directories(league_service_proto_library INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(league_service_proto_library # Link this with any executable/library.
+        ${_REFLECTION}
+        ${_GRPC_GRPCPP}
+        ${_PROTOBUF_LIBPROTOBUF})
+
+add_library(player_team_service_proto_library ${player_team_service_proto_srcs} ${player_team_service_grpc_srcs})
+target_include_directories(player_team_service_proto_library INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(player_team_service_proto_library # Link this with any executable/library.
         ${_REFLECTION}
         ${_GRPC_GRPCPP}
         ${_PROTOBUF_LIBPROTOBUF})
@@ -98,8 +126,11 @@ find_package(nlohmann_json 3.2.0 REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 # target_link_libraries(fantasy_ball ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ service_proto_library fmt::fmt)
 
-add_executable(league_server ${SERVER_SOURCES})
+add_executable(league_server ${LEAGUE_SERVER_SOURCES})
 target_link_libraries(league_server nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library fmt::fmt)
+
+add_executable(player_team_server ${PLAYER_TEAM_SERVER_SOURCES})
+target_link_libraries(player_team_server nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ player_team_service_proto_library fmt::fmt)
 
 add_executable(league_client src/widgets/main_app.cc ${CLIENT_SOURCES} ${HEADER_FILES})
 target_link_libraries(league_client ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library fmt::fmt)
