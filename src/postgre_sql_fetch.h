@@ -18,7 +18,7 @@ public:
   bool Init();
 
   // Create the necessary tables if needed.
-  void CreateBaseTables(pqxx::work *work);
+  void CreateBaseTables(pqxx::work *work, bool add_dummy_rows=false);
 
   // Deletes all base tables.
   void DeleteBaseTables(pqxx::work *work);

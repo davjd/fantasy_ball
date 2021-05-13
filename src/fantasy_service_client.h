@@ -31,6 +31,8 @@ public:
   std::vector<leagueservice::LeagueDescription>
   GetLeaguesForMember(const std::string &token, const std::string &year);
 
+  bool JoinLeague(const std::string& token, int league_id);
+
 private:
   std::unique_ptr<leagueservice::LeagueService::Stub> league_stub_;
 };

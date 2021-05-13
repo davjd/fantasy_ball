@@ -36,7 +36,7 @@ void LeagueFetcher::CreateUserAccount(
     W.commit();
     reply->set_token(generated_token);
   } catch (std::exception const &e) {
-    reply->set_token("0");
+    reply->set_token(e.what());
   }
 }
 

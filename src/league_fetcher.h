@@ -74,7 +74,6 @@ public:
                       leagueservice::LeaguesForMemberResponse *reply);
 
   // TODO: Complete the other helper methods for the RPC service.
-
 private:
   // Fetcher that does contains the Postgre connection.
   // NOTE: This class has no ownership of this pointer.

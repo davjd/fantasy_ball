@@ -161,7 +161,7 @@ bool InitDB(fantasy_ball::PostgreSQLFetch *psql_fetch,
   if (delete_tables) {
     psql_fetch->DeleteBaseTables(&W);
   }
-  psql_fetch->CreateBaseTables(&W);
+  psql_fetch->CreateBaseTables(&W, true);
   W.commit();
   return true;
 }

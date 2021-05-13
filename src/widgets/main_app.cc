@@ -2,6 +2,7 @@
 
 #include "account_manager.h"
 #include "fantasy_service_client.h"
+#include "util.h"
 #include "wxglade_out.h"
 
 #include <grpcpp/create_channel.h>
@@ -26,7 +27,12 @@ private:
   MatchupFrame *matchup_frame_;
   RegisterFrame *register_frame_;
 
+  // TODO: It would be better if these were inside the frames' classes.
   void DisplayLoginErrorLabel(bool show);
+  void DisplayRegisterErrorLabel(bool show);
+  void ShowMainInterface();
+  void ShowLoginInterface();
+  void ShowRegisterInterface();
 
   // Custom event handlers.
   void OpenMainInterface(wxCommandEvent &event);
@@ -35,6 +41,8 @@ private:
 
   void LoginUser(wxCommandEvent &event);
   void RegisterUser(wxCommandEvent &event);
+  void GetLineup(wxCommandEvent &event);
+  void GetRoster(wxCommandEvent &event);
 };
 // class MyFrame : public wxFrame {
 // public:
@@ -54,6 +62,7 @@ bool FantasyApp::OnInit() {
   fantasy_client_ = new fantasy_ball::FantasyServiceClient(grpc::CreateChannel(
       "localhost:50051", grpc::InsecureChannelCredentials()));
 
+  account_manager_->ResetToken();
   // Create all the UI frames.
   login_frame_ = new LoginFrame(this->GetTopWindow(), ID_Login_Frame,
                                 wxT("Fantasy Ball League"));
@@ -71,6 +80,7 @@ bool FantasyApp::OnInit() {
                                       &FantasyApp::OpenRegisterInterface, this);
   register_frame_->register_button->Bind(wxEVT_BUTTON,
                                          &FantasyApp::RegisterUser, this);
+  // matchup_frame_->Bind(wxEVT_SHOW, &FantasyApp::GetRoster, this);
 
   // Determine which initial page to show.
   if (account_manager_->HasSession()) {
@@ -83,23 +93,31 @@ bool FantasyApp::OnInit() {
 }
 
 void FantasyApp::OpenMainInterface(wxCommandEvent &event) {
-  this->login_frame_->Show(false);
-  this->register_frame_->Show(false);
-  this->matchup_frame_->Show(true);
-  this->GetTopWindow()->Centre();
+  ShowMainInterface();
 }
 
 void FantasyApp::OpenLoginInterface(wxCommandEvent &event) {
+  ShowLoginInterface();
+}
+
+void FantasyApp::OpenRegisterInterface(wxCommandEvent &event) {
+  ShowRegisterInterface();
+}
+
+void FantasyApp::ShowMainInterface() {
+  this->login_frame_->Show(false);
+  this->register_frame_->Show(false);
+  this->matchup_frame_->Show(true);
+}
+void FantasyApp::ShowLoginInterface() {
   this->login_frame_->Show(true);
   this->register_frame_->Show(false);
   this->matchup_frame_->Show(false);
-  this->GetTopWindow()->Centre();
 }
-void FantasyApp::OpenRegisterInterface(wxCommandEvent &event) {
+void FantasyApp::ShowRegisterInterface() {
   this->login_frame_->Show(false);
   this->register_frame_->Show(true);
   this->matchup_frame_->Show(false);
-  this->GetTopWindow()->Centre();
 }
 
 void FantasyApp::LoginUser(wxCommandEvent &event) {
@@ -133,17 +151,58 @@ void FantasyApp::RegisterUser(wxCommandEvent &event) {
       this->register_frame_->last_name_input->GetValue().ToStdString();
   if (username.empty() || password.empty() || email.empty() ||
       first_name.empty() || last_name.empty()) {
+    DisplayRegisterErrorLabel(true);
     return;
+  } else {
+    DisplayRegisterErrorLabel(false);
   }
   // Register the account, by sending request.
   auto token = fantasy_client_->RegisterAccount(username, email, password,
                                                 first_name, last_name);
-  // TODO: Send JoinLeague request if league id was provided.
   wxMessageOutput::Get()->Printf("Token[%i]: %s", token.empty(), token);
+  if (token.empty()) {
+    // Display error message.
+    DisplayRegisterErrorLabel(true);
+    return;
+  }
+
+  // Save the token.
+  account_manager_->SaveToken(token);
+
+  // Check if a league id was provided.
+  auto league_id =
+      this->register_frame_->league_input->GetValue().ToStdString();
+  if (!league_id.empty() && fantasy_ball::is_number(league_id)) {
+    wxMessageOutput::Get()->Printf("Joining league [%i]: %s",
+                                   std::stoi(league_id), token);
+    bool successful_join =
+        fantasy_client_->JoinLeague(token, std::stoi(league_id));
+    if (!successful_join) {
+      wxMessageOutput::Get()->Printf("Error joining league [%i]: %s",
+                                     std::stoi(league_id), token);
+    }
+  }
+  DisplayRegisterErrorLabel(false);
+  ShowMainInterface();
+}
+
+void FantasyApp::GetLineup(wxCommandEvent &event) {
+  if (!account_manager_->HasSession()) {
+    return;
+  }
+}
+void FantasyApp::GetRoster(wxCommandEvent &event) {
+  if (!account_manager_->HasSession()) {
+    return;
+  }
 }
 
 void FantasyApp::DisplayLoginErrorLabel(bool show) {
   this->login_frame_->login_error_message_sizer->Show(show);
+}
+
+void FantasyApp::DisplayRegisterErrorLabel(bool show) {
+  this->register_frame_->register_error_message_sizer->Show(show);
 }
 
 int FantasyApp::OnExit() {

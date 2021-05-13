@@ -72,4 +72,15 @@ FantasyServiceClient::GetLeaguesForMember(const std::string &token,
   return std::vector<leagueservice::LeagueDescription>(
       result.league_descriptions().begin(), result.league_descriptions().end());
 }
+
+bool FantasyServiceClient::JoinLeague(const std::string &token, int league_id) {
+  leagueservice::JoinLeagueRequest req;
+  leagueservice::DefaultResponse result;
+  grpc::ClientContext context;
+
+  req.mutable_auth_token()->set_token(token);
+  req.set_league_id(league_id);
+  grpc::Status status = league_stub_->JoinLeague(&context, req, &result);
+  return status.ok();
+}
 } // namespace fantasy_ball

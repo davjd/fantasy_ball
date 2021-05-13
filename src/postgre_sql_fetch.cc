@@ -22,7 +22,7 @@ bool PostgreSQLFetch::Init() {
   }
 }
 
-void PostgreSQLFetch::CreateBaseTables(pqxx::work *work) {
+void PostgreSQLFetch::CreateBaseTables(pqxx::work *work, bool add_dummy_rows) {
   try {
     // Since the tables may reference one another with their foreign keys, we
     // need to create the tables in a specific order.
@@ -46,6 +46,9 @@ void PostgreSQLFetch::CreateBaseTables(pqxx::work *work) {
     from_file_exec0("create_matchup.sql", work);
     from_file_exec0("create_match.sql", work);
     from_file_exec0("create_lineup_slot.sql", work);
+    if (add_dummy_rows) {
+      from_file_exec0("create_test_data.sql", work);
+    }
   } catch (std::exception const &e) {
     std::cerr << e.what() << std::endl;
   }
