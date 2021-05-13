@@ -81,6 +81,9 @@ bool FantasyServiceClient::JoinLeague(const std::string &token, int league_id) {
   req.mutable_auth_token()->set_token(token);
   req.set_league_id(league_id);
   grpc::Status status = league_stub_->JoinLeague(&context, req, &result);
+  if (result.message().find("ERROR") != std::string::npos) {
+    return false;
+  }
   return status.ok();
 }
 } // namespace fantasy_ball

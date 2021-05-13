@@ -108,25 +108,30 @@ void LeagueFetcher::JoinLeague(const leagueservice::JoinLeagueRequest *request,
       reply->set_message("ERROR: Invalid authentication token.");
       return;
     }
-    AddLeagueMember(user_account_id, request->league_id());
+    bool added = AddLeagueMember(3, 1);
+    if (!added) {
+      reply->set_message("ERROR: Couldn't add user.");
+    }
   } catch (std::exception const &e) {
-    reply->set_message("ERROR: Internal error.");
+    reply->set_message(fmt::format("ERROR: %s.", e.what()));
   }
 }
 
-void LeagueFetcher::AddLeagueMember(int user_account_id, int league_id) {
+bool LeagueFetcher::AddLeagueMember(int user_account_id, int league_id) {
   try {
     auto *connection = psql_fetcher_->GetCurrentConnection();
     pqxx::work W{*connection};
     // TODO: Add safety checks to ensure that this insertion isn't violating the
     // league size constraint.
     const std::string insert_league =
-        fmt::format("INSERT into league_membership(league_id, user_accound_id) "
+        fmt::format("INSERT into league_membership(league_id, user_account_id) "
                     "values({}, {});",
                     league_id, user_account_id);
     W.exec0(insert_league);
     W.commit();
+    return true;
   } catch (std::exception const &e) {
+    return false;
   }
 }
 

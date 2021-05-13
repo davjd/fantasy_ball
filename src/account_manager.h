@@ -24,6 +24,12 @@ public:
   // Returns the config for the given App session.
   wxConfig *GetConfig();
 
+  // Stores the token for the account session.
+  void SaveToken(const std::string& token);
+
+  // Removes the active session.
+  void ResetToken();
+
 private:
   std::unique_ptr<wxConfig> config_;
   const std::string app_name_;

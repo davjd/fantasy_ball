@@ -39,7 +39,7 @@ public:
   // Add the given user into the given league_id.
   // TODO: Add safety check to ensure that only the league commissioner can call
   // this.
-  void AddLeagueMember(int user_account_id, int league_id);
+  bool AddLeagueMember(int user_account_id, int league_id);
 
   // Selects a player in the league's draft.
   void MakeDraftPick(const leagueservice::DraftPickRequest *request,

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS league_membership (
     "id" serial NOT NULL,
     league_id integer NOT NULL,
     user_account_id integer NOT NULL,
-    season_year varchar(50) NOT NULL,
+    season_year varchar(50) NOT NULL default '2020-2021',
     CONSTRAINT PK_league_membership PRIMARY KEY ("id"),
     CONSTRAINT FK_218 FOREIGN KEY (league_id) REFERENCES league ("id"),
     CONSTRAINT FK_221 FOREIGN KEY (user_account_id) REFERENCES user_account ("id")
