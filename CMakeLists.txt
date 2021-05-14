@@ -31,6 +31,8 @@ set(PLAYER_TEAM_SERVER_SOURCES
     src/player_team_service_server.cc
     src/util.cc
     src/curl_fetch.cc
+    src/team_fetcher.cc
+    src/player_fetcher.cc
 )
 
 set(CLIENT_SOURCES

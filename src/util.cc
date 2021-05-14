@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <random>
+#include <proto/player_team_service.grpc.pb.h>
 
 namespace fantasy_ball {
 
