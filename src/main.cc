@@ -53,9 +53,33 @@ int main() {
   std::cout << "Key: " << curl_fetch->Key() << "\n";
 
   std::vector<PlayerFetcher::PlayerInfoShort> roster;
-  roster.push_back({"Mikal", "Bridges"});
-  roster.push_back({"Jordan", "Poole"});
-  roster.push_back({"Sterling", "Brown"});
+  roster.push_back({"Luka", "Doncic"});
+  roster.push_back({"Collin", "Sexton"});
+  roster.push_back({"Jayson", "Tatum"});
+  roster.push_back({"Bojan", "Bogdanovic"});
+  roster.push_back({"Danilo", "Gallinari"});
+  roster.push_back({"James", "Harden"});
+  roster.push_back({"Norman", "Powell"});
+  roster.push_back({"Darius", "Bazley"});
+  roster.push_back({"Derrick", "Rose"});
+  roster.push_back({"Deandre", "Ayton"});
+  roster.push_back({"Christian", "Wood"});
+  roster.push_back({"Trae", "Young"});
+  roster.push_back({"Zach", "Lavine"});
+
+  roster.push_back({"Chris", "Paul"});
+  roster.push_back({"Jimmy", "Butler"});
+  roster.push_back({"Brandon", "Ingram"});
+  roster.push_back({"John", "Collins"});
+  roster.push_back({"Demar", "Derozan"});
+  roster.push_back({"Tobias", "Harris"});
+  roster.push_back({"Nikola", "Vucevic"});
+  roster.push_back({"Jerami", "Grant"});
+  roster.push_back({"Eric", "Bledsoe"});
+  roster.push_back({"Donte", "Divincenzo"});
+  roster.push_back({"Duncan", "Robinson"});
+  roster.push_back({"Chris", "Boucher"});
+  roster.push_back({"Kelly", "Olynyk"});
 
   // Update the roster's player info with their id and other data.
   {
@@ -71,16 +95,16 @@ int main() {
   // First we need to add the players into a batch.
 
   // Getting data for just one player.
-  {
-    bool added = player_fetcher->AddPlayer(roster.front());
-    if (!added) {
-      std::cout << "Couldn't add player to the fetcher batch." << std::endl;
-      return 0;
-    }
-    std::cout << "Successfully added player to the fetcher batch." << std::endl;
-    const auto &log = player_fetcher->GetPlayerLog(roster.front());
-    print_player_log_info(log);
-  }
+  // {
+  //   bool added = player_fetcher->AddPlayer(roster.front());
+  //   if (!added) {
+  //     std::cout << "Couldn't add player to the fetcher batch." << std::endl;
+  //     return 0;
+  //   }
+  //   std::cout << "Successfully added player to the fetcher batch." << std::endl;
+  //   const auto &log = player_fetcher->GetPlayerLog(roster.front());
+  //   print_player_log_info(log);
+  // }
 
   // Get multiple players in one batch.
   {
@@ -91,10 +115,5 @@ int main() {
       print_player_log_info(player_log);
     }
   }
-
-  char *url = NULL;
-  curl_easy_getinfo(curl_fetch.get(), CURLINFO_EFFECTIVE_URL, &url);
-  std::cout << "Ret: " << curl_fetch->curl_ret() << ", URL: " << url
-            << std::endl;
   return 0;
 }

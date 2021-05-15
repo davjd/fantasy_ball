@@ -16,6 +16,7 @@ set(HEADER_FILES src/util.cc
                  src/postgre_sql_fetch.cc 
                  src/league_fetcher.cc
                  src/widgets/wxglade_out.cpp
+                 src/tournament_manager.cc
                  src/account_manager.cc
 )
 
@@ -33,6 +34,7 @@ set(PLAYER_TEAM_SERVER_SOURCES
     src/curl_fetch.cc
     src/team_fetcher.cc
     src/player_fetcher.cc
+    src/tournament_manager.cc
 )
 
 set(CLIENT_SOURCES
@@ -123,10 +125,10 @@ find_package(nlohmann_json 3.2.0 REQUIRED)
 
 # Experimental binaries for testing.
 # add_executable(fantasy_ball src/experimental.cc ${HEADER_FILES})
-# add_executable(fantasy_ball src/widgets/main_app.cc ${HEADER_FILES})
+add_executable(fantasy_ball src/main.cc ${HEADER_FILES} ${CLIENT_SOURCES})
 
 include_directories(${CURL_INCLUDE_DIR})
-# target_link_libraries(fantasy_ball ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ service_proto_library fmt::fmt)
+target_link_libraries(fantasy_ball ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library player_team_service_proto_library fmt::fmt)
 
 add_executable(league_server ${LEAGUE_SERVER_SOURCES})
 target_link_libraries(league_server nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library fmt::fmt)
@@ -135,4 +137,4 @@ add_executable(player_team_server ${PLAYER_TEAM_SERVER_SOURCES})
 target_link_libraries(player_team_server nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ player_team_service_proto_library fmt::fmt)
 
 add_executable(league_client src/widgets/main_app.cc ${CLIENT_SOURCES} ${HEADER_FILES})
-target_link_libraries(league_client ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library fmt::fmt)
+target_link_libraries(league_client ${wxWidgets_LIBRARIES} nlohmann_json::nlohmann_json ${CURL_LIBRARIES} ${PQXX_LIB} ${PQ_LIB} grpc++ league_service_proto_library player_team_service_proto_library fmt::fmt)

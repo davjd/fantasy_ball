@@ -4,6 +4,21 @@
 
 namespace fantasy_ball {
 
+// Static test rosters for the demo.
+std::vector<std::pair<std::string, std::string>> AccountManager::kRoster1 = {
+    {"Luka", "Doncic"},      {"Collin", "Sexton"},    {"Jayson", "Tatum"},
+    {"Bojan", "Bogdanovic"}, {"Danilo", "Gallinari"}, {"James", "Harden"},
+    {"Norman", "Powell"},    {"Darius", "Bazley"},    {"Derrick", "Rose"},
+    {"Deandre", "Ayton"},    {"Christian", "Wood"},   {"Trae", "Young"},
+    {"Zach", "Lavine"}};
+
+std::vector<std::pair<std::string, std::string>> AccountManager::kRoster2 = {
+    {"Chris", "Paul"},       {"Jimmy", "Butler"},    {"Brandon", "Ingram"},
+    {"John", "Collins"},     {"Demar", "Derozan"},   {"Tobias", "Harris"},
+    {"Nikola", "Vucevic"},   {"Jerami", "Grant"},    {"Eric", "Bledsoe"},
+    {"Donte", "Divincenzo"}, {"Duncan", "Robinson"}, {"Chris", "Boucher"},
+    {"Kelly", "Olynyk"}};
+
 AccountManager::AccountManager(const std::string &app_name)
     : app_name_(app_name) {
   // Initialize the config.
@@ -29,4 +44,24 @@ void AccountManager::SaveToken(const std::string &token) {
 void AccountManager::ResetToken() { config_->DeleteAll(); }
 
 wxConfig *AccountManager::GetConfig() { return config_.get(); }
+
+std::pair<fantasy_ball::TournamentManager::UserRoster,
+          fantasy_ball::TournamentManager::UserRoster>
+AccountManager::GetTestRosters(
+    fantasy_ball::FantasyServiceClient *fantasy_client) {
+  fantasy_ball::TournamentManager::UserRoster user_1 = {};
+  fantasy_ball::TournamentManager::UserRoster user_2 = {};
+  for (const auto &roster : kRoster1) {
+    auto member =
+        fantasy_client->GetPlayerDescription(roster.first, roster.second);
+    user_1.roster.push_back(member);
+  }
+
+  for (const auto &roster : kRoster2) {
+    auto member =
+        fantasy_client->GetPlayerDescription(roster.first, roster.second);
+    user_2.roster.push_back(member);
+  }
+  return std::make_pair(user_1, user_2);
+}
 } // namespace fantasy_ball
