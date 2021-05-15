@@ -209,12 +209,15 @@ void PlayerFetcher::GetPlayerInfoShort(
     return;
   }
   json data = json::parse(json_content);
-  if (!data.contains("players")) {
+  if (data.empty() || !data.contains("players")) {
     return;
   }
   // We'll guess that the intended player is the first one returned.
   // TODO: Update this to verify that we selected the intended player.
   auto const &players = data["players"];
+  if (players.size() == 0) {
+    return;
+  }
   player_info->read_json(players.front());
 }
 
@@ -288,7 +291,7 @@ std::string PlayerFetcher::make_base_daily_log_url(endpoint::Options *options) {
 std::string
 PlayerFetcher::make_base_player_info_url(endpoint::Options *options) {
   std::string version;
-  if (options == nullptr) {
+  if (options != nullptr) {
     version = options->version;
   } else {
     version = options_.version;
