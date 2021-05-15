@@ -152,11 +152,12 @@ public:
   // Contains a short description of a player.
   struct PlayerInfoShort {
     PlayerInfoShort() = default;
+    static const int kDefaultId = -1;
     std::string first_name;
     std::string last_name;
     // A negative id signifies that an error occured when creating this object
     // and should be recreated.
-    int id = -1;
+    int id = kDefaultId;
     std::string team;
     int team_id;
 

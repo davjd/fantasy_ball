@@ -6,7 +6,8 @@ namespace fantasy_ball {
 
 FantasyServiceClient::FantasyServiceClient(
     std::shared_ptr<grpc::Channel> channel)
-    : league_stub_(leagueservice::LeagueService::NewStub(channel)) {}
+    : league_stub_(leagueservice::LeagueService::NewStub(channel)),
+      player_stub_(playerteamservice::PlayerTeamService::NewStub(channel)) {}
 
 std::string FantasyServiceClient::RegisterAccount(
     const std::string &username, const std::string &email,
@@ -81,9 +82,31 @@ bool FantasyServiceClient::JoinLeague(const std::string &token, int league_id) {
   req.mutable_auth_token()->set_token(token);
   req.set_league_id(league_id);
   grpc::Status status = league_stub_->JoinLeague(&context, req, &result);
+  // TODO: Need to do an overall better job of communicating/propagating errors.
   if (result.message().find("ERROR") != std::string::npos) {
     return false;
   }
   return status.ok();
+}
+
+fantasy_ball::TournamentManager::RosterMember
+FantasyServiceClient::GetPlayerDescription(const std::string &first_name,
+                                           const std::string &last_name) {
+  playerteamservice::MinimalPlayerDescription req;
+  playerteamservice::PlayerDescription result;
+  grpc::ClientContext context;
+  fantasy_ball::TournamentManager::RosterMember member = {};
+
+  grpc::Status status =
+      player_stub_->GetPlayerDescription(&context, req, &result);
+  if (!status.ok()) {
+    return member;
+  }
+  member.first_name = result.first_name();
+  member.last_name = result.last_name();
+  member.player_id = result.player_id();
+  member.team = result.team();
+  member.team_id = result.team_id();
+  return member;
 }
 } // namespace fantasy_ball

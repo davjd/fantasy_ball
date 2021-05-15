@@ -68,15 +68,6 @@ struct Options {
   // The season year for the selected season to retrieve daily logs from.
   // e.g. 2020-2021 season.
   std::string season_start;
-
-  static Options FromConfig(const playerteamservice::FetchConfig &config) {
-    Options options = {};
-    options.date = config.date();
-    options.season_start = config.season_start();
-    options.version = config.version();
-    options.strict_search = config.strict();
-    return options;
-  }
 };
 } // namespace endpoint
 

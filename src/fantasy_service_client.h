@@ -7,6 +7,10 @@
 #include <grpcpp/channel.h>
 #include <proto/league_service.grpc.pb.h>
 #include <proto/league_service.pb.h>
+#include <proto/player_team_service.grpc.pb.h>
+#include <proto/player_team_service.pb.h>
+
+#include "tournament_manager.h"
 
 namespace fantasy_ball {
 
@@ -31,10 +35,15 @@ public:
   std::vector<leagueservice::LeagueDescription>
   GetLeaguesForMember(const std::string &token, const std::string &year);
 
-  bool JoinLeague(const std::string& token, int league_id);
+  bool JoinLeague(const std::string &token, int league_id);
+
+  fantasy_ball::TournamentManager::RosterMember
+  GetPlayerDescription(const std::string &first_name,
+                       const std::string &last_name);
 
 private:
   std::unique_ptr<leagueservice::LeagueService::Stub> league_stub_;
+  std::unique_ptr<playerteamservice::PlayerTeamService::Stub> player_stub_;
 };
 
 } // namespace fantasy_ball

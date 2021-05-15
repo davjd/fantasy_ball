@@ -17,6 +17,16 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
 
+fantasy_ball::endpoint::Options
+from_config(const playerteamservice::FetchConfig &config) {
+  fantasy_ball::endpoint::Options options = {};
+  options.date = config.date();
+  options.season_start = config.season_start();
+  options.version = config.version();
+  options.strict_search = config.strict();
+  return options;
+}
+
 void convert_logs(
     const std::vector<fantasy_ball::PlayerFetcher::DailyPlayerLog> &logs,
     playerteamservice::LogsForConfigResponse *logs_response) {
@@ -63,8 +73,7 @@ public:
     if (request->player_description().player_id() < 0) {
       return Status::OK;
     }
-    auto fetch_options =
-        fantasy_ball::endpoint::Options::FromConfig(request->config());
+    auto fetch_options = from_config(request->config());
     fantasy_ball::PlayerFetcher::PlayerInfoShort identity = {};
     identity.id = request->player_description().player_id();
     bool added = player_fetcher_->AddPlayer(identity, &fetch_options);
@@ -84,13 +93,31 @@ public:
   FetchLogsForConfig(ServerContext *context,
                      const playerteamservice::LogsForConfigRequest *request,
                      playerteamservice::LogsForConfigResponse *reply) override {
-    auto fetch_options =
-        fantasy_ball::endpoint::Options::FromConfig(request->config());
+    auto fetch_options = from_config(request->config());
     auto logs = player_fetcher_->GetRosterLog(&fetch_options);
     if (logs.empty()) {
       return Status::CANCELLED;
     }
     convert_logs(logs, reply);
+    return Status::OK;
+  }
+
+  Status GetPlayerDescription(
+      ServerContext *context,
+      const playerteamservice::MinimalPlayerDescription *request,
+      playerteamservice::PlayerDescription *reply) override {
+    fantasy_ball::PlayerFetcher::PlayerInfoShort info = {};
+    info.first_name = request->first_name();
+    info.last_name = request->last_name();
+    player_fetcher_->GetPlayerInfoShort(&info);
+    if (info.id == fantasy_ball::PlayerFetcher::PlayerInfoShort::kDefaultId) {
+      return Status::CANCELLED;
+    }
+    reply->set_player_id(info.id);
+    reply->set_first_name(info.first_name);
+    reply->set_last_name(info.last_name);
+    reply->set_team(info.team);
+    reply->set_team_id(info.team_id);
     return Status::OK;
   }
 
@@ -100,27 +127,21 @@ private:
 
 int main(int argc, char *argv[]) {
 
-  std::unique_ptr<CurlFetch> curl_fetch = std::make_unique<CurlFetch>();
-  curl_fetch->Init();
-  std::unique_ptr<TeamFetcher> team_fetcher =
-      std::make_unique<TeamFetcher>(curl_fetch.get());
-  std::unique_ptr<PlayerFetcher> player_fetcher =
-      std::make_unique<PlayerFetcher>(curl_fetch.get(), team_fetcher.get());
-  //   ServerBuilder builder;
-  //   builder.AddListeningPort("0.0.0.0:50051",
-  //   grpc::InsecureServerCredentials());
+  // Create the required fetchers.
+  fantasy_ball::CurlFetch curl_fetch;
+  curl_fetch.Init();
+  fantasy_ball::TeamFetcher team_fetcher(&curl_fetch);
+  fantasy_ball::PlayerFetcher player_fetcher(&curl_fetch, &team_fetcher);
 
-  //   fantasy_ball::PostgreSQLFetch psql_fetch;
-  //   bool init_success = InitDB(&psql_fetch, true);
-  //   if (!init_success) {
-  //     return 0;
-  //   }
-  //   fantasy_ball::LeagueFetcher league_fetcher(&psql_fetch);
-  //   LeagueServiceImpl my_service(&league_fetcher);
-  //   builder.RegisterService(&my_service);
+  // Create the server and run it.
+  ServerBuilder builder;
+  builder.AddListeningPort("0.0.0.0:50051", grpc::InsecureServerCredentials());
 
-  //   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-  //   std::cout << "Built server, now waiting for requests." << std::endl;
-  //   server->Wait();
+  PlayerTeamServiceImpl my_service(&player_fetcher);
+  builder.RegisterService(&my_service);
+
+  std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+  std::cout << "Built server, now waiting for requests." << std::endl;
+  server->Wait();
   return 0;
 }
