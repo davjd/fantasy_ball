@@ -160,6 +160,7 @@ public:
     int id = kDefaultId;
     std::string team;
     int team_id;
+    std::string positions;
 
     void read_json(const nlohmann::json &player_reference) {
       if (!player_reference.contains("player") ||
@@ -174,6 +175,7 @@ public:
       last_name = player_map["lastName"].get<std::string>();
       team = team_map["abbreviation"].get<std::string>();
       team_id = team_map["id"].get<int>();
+      positions = player_map["primaryPosition"].get<std::string>();
     }
 
     static PlayerInfoShort
@@ -190,6 +192,7 @@ public:
       player.last_name = player_map["lastName"].get<std::string>();
       player.team = team_map["abbreviation"].get<std::string>();
       player.team_id = team_map["id"].get<int>();
+      player.positions = player_map["primaryPosition"].get<std::string>();
       return player;
     }
 

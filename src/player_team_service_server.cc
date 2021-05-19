@@ -118,6 +118,25 @@ public:
     reply->set_last_name(info.last_name);
     reply->set_team(info.team);
     reply->set_team_id(info.team_id);
+    reply->set_positions(info.positions);
+    return Status::OK;
+  }
+
+  Status GetPlayerDescriptionForId(
+      ServerContext *context, const playerteamservice::PlayerId *request,
+      playerteamservice::PlayerDescription *reply) override {
+    fantasy_ball::PlayerFetcher::PlayerInfoShort info = {};
+    info.id = request->id();
+    player_fetcher_->GetPlayerInfoShort(&info);
+    if (info.first_name.empty() || info.last_name.empty()) {
+      return Status::CANCELLED;
+    }
+    reply->set_player_id(info.id);
+    reply->set_first_name(info.first_name);
+    reply->set_last_name(info.last_name);
+    reply->set_team(info.team);
+    reply->set_team_id(info.team_id);
+    reply->set_positions(info.positions);
     return Status::OK;
   }
 

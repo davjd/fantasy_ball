@@ -316,13 +316,10 @@ void LeagueFetcher::GetRoster(const leagueservice::RosterRequest *request,
   }
   auto *connection = psql_fetcher_->GetCurrentConnection();
   pqxx::work W{*connection};
-  const std::string get_roster = fmt::format(
-      "SELECT player_id, status, playable_positions, id from "
-      "roster_member where user_account_id={} and league_id={}{}",
-      user_account_id, request->league_id(),
-      request->status_filter().empty()
-          ? ";" // Only add filter constraint if it was provided.
-          : fmt::format(" and status={};", request->status_filter()));
+  const std::string get_roster =
+      fmt::format("SELECT player_id, status, playable_positions, id from "
+                  "roster_member where user_account_id={} and league_id={};",
+                  user_account_id, request->league_id());
   pqxx::result roster_result = W.exec(get_roster);
   W.commit();
   for (const auto &roster_row : roster_result) {
@@ -346,9 +343,8 @@ void LeagueFetcher::GetLeaguesForMember(
   const std::string get_leagues =
       fmt::format("SELECT league_id from league_membership where "
                   "user_account_id={} and season_year={};",
-                  user_account_id, request->season_year());
+                  user_account_id, W.quote(request->season_year()));
   pqxx::result league_result = W.exec(get_leagues);
-  W.commit();
   for (const auto &league_row : league_result) {
     const std::string get_league_name = fmt::format(
         "SELECT league_name from league where id={};", league_row[0].as<int>());
@@ -357,6 +353,7 @@ void LeagueFetcher::GetLeaguesForMember(
     league_description->set_league_id(league_row[0].as<int>());
     league_description->set_league_name(name_row[0].as<std::string>());
   }
+  W.commit();
 }
 
 int LeagueFetcher::init_league_settings(int commissioner_id) {
