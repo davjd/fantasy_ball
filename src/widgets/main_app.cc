@@ -59,8 +59,11 @@ bool FantasyApp::OnInit() {
   // Initialize needed stuff.
   wxInitAllImageHandlers();
   account_manager_ = new fantasy_ball::AccountManager("FantasyApp");
-  fantasy_client_ = new fantasy_ball::FantasyServiceClient(grpc::CreateChannel(
-      "localhost:50051", grpc::InsecureChannelCredentials()));
+  fantasy_client_ = new fantasy_ball::FantasyServiceClient(
+      grpc::CreateChannel("localhost:50050",
+                          grpc::InsecureChannelCredentials()),
+      grpc::CreateChannel("localhost:50051",
+                          grpc::InsecureChannelCredentials()));
 
   account_manager_->ResetToken();
   // Create all the UI frames.
