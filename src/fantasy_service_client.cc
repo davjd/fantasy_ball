@@ -5,9 +5,11 @@
 namespace fantasy_ball {
 
 FantasyServiceClient::FantasyServiceClient(
-    std::shared_ptr<grpc::Channel> channel)
-    : league_stub_(leagueservice::LeagueService::NewStub(channel)),
-      player_stub_(playerteamservice::PlayerTeamService::NewStub(channel)) {}
+    std::shared_ptr<grpc::Channel> league_channel,
+    std::shared_ptr<grpc::Channel> player_channel)
+    : league_stub_(leagueservice::LeagueService::NewStub(league_channel)),
+      player_stub_(
+          playerteamservice::PlayerTeamService::NewStub(player_channel)) {}
 
 std::string FantasyServiceClient::RegisterAccount(
     const std::string &username, const std::string &email,
@@ -95,10 +97,16 @@ FantasyServiceClient::GetPlayerDescription(const std::string &first_name,
   playerteamservice::MinimalPlayerDescription req;
   playerteamservice::PlayerDescription result;
   grpc::ClientContext context;
-  fantasy_ball::TournamentManager::RosterMember member = {};
 
+  if (first_name.empty() || last_name.empty()) {
+    return {};
+  }
+  req.set_first_name(first_name);
+  req.set_last_name(last_name);
   grpc::Status status =
       player_stub_->GetPlayerDescription(&context, req, &result);
+
+  fantasy_ball::TournamentManager::RosterMember member = {};
   if (!status.ok()) {
     return member;
   }
@@ -108,5 +116,42 @@ FantasyServiceClient::GetPlayerDescription(const std::string &first_name,
   member.team = result.team();
   member.team_id = result.team_id();
   return member;
+}
+
+int FantasyServiceClient::CreateLeague(const std::string &token,
+                                       const std::string &league_name) {
+  leagueservice::CreateLeagueRequest req;
+  leagueservice::CreateLeagueResponse result;
+  grpc::ClientContext context;
+
+  req.mutable_auth_token()->set_token(token);
+  req.set_league_name(league_name);
+  grpc::Status status = league_stub_->CreateLeague(&context, req, &result);
+  // TODO: Need to do an overall better job of communicating/propagating errors.
+  if (!status.ok()) {
+    return 0;
+  }
+  return result.league_id();
+}
+
+void FantasyServiceClient::MakeDraftPick(const std::string &token,
+                                         int pick_number, int player_id,
+                                         int league_id,
+                                         const std::string &positions) {
+  leagueservice::DraftPickRequest req;
+  leagueservice::DefaultResponse result;
+  grpc::ClientContext context;
+
+  req.mutable_auth_token()->set_token(token);
+  req.set_league_id(league_id);
+  req.set_pick_number(pick_number);
+  req.set_player_selected_id(player_id);
+  req.set_league_id(league_id);
+  req.set_positions(positions);
+
+  grpc::Status status = league_stub_->MakeDraftPick(&context, req, &result);
+  if (!status.ok()) {
+    return;
+  }
 }
 } // namespace fantasy_ball

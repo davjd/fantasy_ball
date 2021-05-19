@@ -161,17 +161,17 @@ bool InitDB(fantasy_ball::PostgreSQLFetch *psql_fetch,
   if (delete_tables) {
     psql_fetch->DeleteBaseTables(&W);
   }
-  psql_fetch->CreateBaseTables(&W, true);
+  psql_fetch->CreateBaseTables(&W, false);
   W.commit();
   return true;
 }
 
 int main(int argc, char *argv[]) {
   ServerBuilder builder;
-  builder.AddListeningPort("0.0.0.0:50051", grpc::InsecureServerCredentials());
+  builder.AddListeningPort("0.0.0.0:50050", grpc::InsecureServerCredentials());
 
   fantasy_ball::PostgreSQLFetch psql_fetch;
-  bool init_success = InitDB(&psql_fetch, true);
+  bool init_success = InitDB(&psql_fetch, false);
   if (!init_success) {
     return 0;
   }

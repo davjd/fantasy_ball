@@ -17,7 +17,8 @@ namespace fantasy_ball {
 // This class is the client of all needed GRPC services.
 class FantasyServiceClient {
 public:
-  FantasyServiceClient(std::shared_ptr<grpc::Channel> channel);
+  FantasyServiceClient(std::shared_ptr<grpc::Channel> league_channel,
+                       std::shared_ptr<grpc::Channel> player_channel);
   ~FantasyServiceClient() = default;
 
   std::string RegisterAccount(const std::string &username,
@@ -40,6 +41,11 @@ public:
   fantasy_ball::TournamentManager::RosterMember
   GetPlayerDescription(const std::string &first_name,
                        const std::string &last_name);
+
+  int CreateLeague(const std::string &token, const std::string &league_name);
+
+  void MakeDraftPick(const std::string &token, int pick_number, int player_id,
+                     int league_id, const std::string &positions);
 
 private:
   std::unique_ptr<leagueservice::LeagueService::Stub> league_stub_;

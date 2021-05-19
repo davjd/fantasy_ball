@@ -17,6 +17,7 @@ void LeagueFetcher::CreateUserAccount(
   try {
     auto *connection = psql_fetcher_->GetCurrentConnection();
     pqxx::work W{*connection};
+    reply->set_token("AHHHH");
     const std::string insert_profile_description =
         "INSERT into profile_description default values RETURNING id;";
     pqxx::row profile_row = W.exec1(insert_profile_description);
@@ -108,7 +109,7 @@ void LeagueFetcher::JoinLeague(const leagueservice::JoinLeagueRequest *request,
       reply->set_message("ERROR: Invalid authentication token.");
       return;
     }
-    bool added = AddLeagueMember(3, 1);
+    bool added = AddLeagueMember(user_account_id, request->league_id());
     if (!added) {
       reply->set_message("ERROR: Couldn't add user.");
     }
