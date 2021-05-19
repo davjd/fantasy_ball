@@ -5,6 +5,7 @@
 #include "util.h"
 #include "wxglade_out.h"
 
+#include <fmt/core.h>
 #include <grpcpp/create_channel.h>
 #include <wx/msgout.h>
 
@@ -42,17 +43,9 @@ private:
   void LoginUser(wxCommandEvent &event);
   void RegisterUser(wxCommandEvent &event);
   void GetLineup(wxCommandEvent &event);
-  void GetRoster(wxCommandEvent &event);
+  void GetRoster(wxShowEvent &event);
 };
-// class MyFrame : public wxFrame {
-// public:
-//   MyFrame();
 
-// private:
-//   void OnHello(wxCommandEvent &event);
-//   void OnExit(wxCommandEvent &event);
-//   void OnAbout(wxCommandEvent &event);
-// };
 enum { ID_Login_Frame = 1, ID_Register_Frame, ID_Matchup_Frame };
 wxIMPLEMENT_APP(FantasyApp);
 bool FantasyApp::OnInit() {
@@ -69,11 +62,14 @@ bool FantasyApp::OnInit() {
   // Create all the UI frames.
   login_frame_ = new LoginFrame(this->GetTopWindow(), ID_Login_Frame,
                                 wxT("Fantasy Ball League"));
-  DisplayLoginErrorLabel(false);
   register_frame_ = new RegisterFrame(this->GetTopWindow(), ID_Register_Frame,
                                       wxT("Fantasy Ball League"));
   matchup_frame_ = new MatchupFrame(this->GetTopWindow(), ID_Matchup_Frame,
                                     wxT("Fantasy Ball League"));
+
+  // Hide error labels.
+  DisplayLoginErrorLabel(false);
+  DisplayRegisterErrorLabel(true);
 
   // Bind events. We do this here because the parent can modify the children
   // widgets/frames.
@@ -83,7 +79,7 @@ bool FantasyApp::OnInit() {
                                       &FantasyApp::OpenRegisterInterface, this);
   register_frame_->register_button->Bind(wxEVT_BUTTON,
                                          &FantasyApp::RegisterUser, this);
-  // matchup_frame_->Bind(wxEVT_SHOW, &FantasyApp::GetRoster, this);
+  matchup_frame_->Bind(wxEVT_SHOW, &FantasyApp::GetRoster, this);
 
   // Determine which initial page to show.
   if (account_manager_->HasSession()) {
@@ -112,11 +108,13 @@ void FantasyApp::ShowMainInterface() {
   this->register_frame_->Show(false);
   this->matchup_frame_->Show(true);
 }
+
 void FantasyApp::ShowLoginInterface() {
   this->login_frame_->Show(true);
   this->register_frame_->Show(false);
   this->matchup_frame_->Show(false);
 }
+
 void FantasyApp::ShowRegisterInterface() {
   this->login_frame_->Show(false);
   this->register_frame_->Show(true);
@@ -133,13 +131,31 @@ void FantasyApp::LoginUser(wxCommandEvent &event) {
   }
   // Send the request to the league server.
   auto token = fantasy_client_->Login(username, password);
+  wxMessageOutput::Get()->Printf("Token[%i]: %s", token.empty(), token);
   if (token == "0") {
     // An error occured, so display error message.
     DisplayLoginErrorLabel(true);
   } else {
+    // We must retrieve the league id, for now we'll select the first league
+    // this user is in. We use a default year for now.
+    auto league_descriptions =
+        fantasy_client_->GetLeaguesForMember(token, "2020-2021");
+    if (league_descriptions.empty()) {
+      // TODO: We return an error if the user isn't in a league. Change this to
+      // handle this case.
+      wxMessageOutput::Get()->Printf("Found no leagues!");
+      return;
+    }
+    wxMessageOutput::Get()->Printf("Saving league %d",
+                                   league_descriptions.at(0).league_id());
+    // Store the token and the league id for this session.
+    account_manager_->SaveToken(token);
+    account_manager_->SaveLeague(league_descriptions.at(0).league_id());
+
+    wxMessageOutput::Get()->Printf("Successful login");
     DisplayLoginErrorLabel(false);
+    ShowMainInterface();
   }
-  wxMessageOutput::Get()->Printf("Token[%i]: %s", token.empty(), token);
 }
 
 void FantasyApp::RegisterUser(wxCommandEvent &event) {
@@ -159,6 +175,7 @@ void FantasyApp::RegisterUser(wxCommandEvent &event) {
   } else {
     DisplayRegisterErrorLabel(false);
   }
+
   // Register the account, by sending request.
   auto token = fantasy_client_->RegisterAccount(username, email, password,
                                                 first_name, last_name);
@@ -168,9 +185,6 @@ void FantasyApp::RegisterUser(wxCommandEvent &event) {
     DisplayRegisterErrorLabel(true);
     return;
   }
-
-  // Save the token.
-  account_manager_->SaveToken(token);
 
   // Check if a league id was provided.
   auto league_id =
@@ -185,19 +199,72 @@ void FantasyApp::RegisterUser(wxCommandEvent &event) {
                                      std::stoi(league_id), token);
     }
   }
+  account_manager_->SaveToken(token);
+  account_manager_->SaveLeague(std::stoi(league_id));
   DisplayRegisterErrorLabel(false);
   ShowMainInterface();
 }
 
 void FantasyApp::GetLineup(wxCommandEvent &event) {
-  if (!account_manager_->HasSession()) {
-    return;
-  }
+  // TODO: Because the regular season is over, we will mock a date here, but
+  // this should be easily modifiable.
+  // fantasy_client_->AddPlayerToFetchBatch(member.player_id(), "20210410");
 }
-void FantasyApp::GetRoster(wxCommandEvent &event) {
-  if (!account_manager_->HasSession()) {
+
+void FantasyApp::GetRoster(wxShowEvent &event) {
+  if (!account_manager_->HasALeague()) {
+    wxMessageOutput::Get()->Printf(
+        "Found no league for user to retrieve roster for.");
     return;
   }
+  if (account_manager_->GetRoster().empty()) {
+    wxMessageOutput::Get()->Printf("Grabbing roster");
+    auto roster = fantasy_client_->GetRoster(account_manager_->GetSessionId(),
+                                             account_manager_->GetLeague());
+    account_manager_->SetRoster(roster);
+    wxMessageOutput::Get()->Printf("Got %d roster members", (int)roster.size());
+  }
+  for (const auto &member : account_manager_->GetRoster()) {
+    auto description =
+        fantasy_client_->GetPlayerDescription(member.player_id());
+    // Dynamically create the widget container for each roster member.
+    // TODO: Move this to a function, but would wait to figure out how we should
+    // extend functionalities to the generated frame classes.
+    wxBoxSizer *roster_member_sizer = new wxBoxSizer(wxVERTICAL);
+    matchup_frame_->roster_list_sizer->Add(roster_member_sizer, 0,
+                                           wxALIGN_CENTER_HORIZONTAL, 0);
+    wxBoxSizer *labels_sizer = new wxBoxSizer(wxHORIZONTAL);
+    roster_member_sizer->Add(labels_sizer, 0, wxEXPAND, 0);
+
+    // Create a label to display the player's name, team, and position.
+    const std::string name_display =
+        fmt::format("{}. {}", description.first_name[0], description.last_name);
+    wxStaticText *name_label = new wxStaticText(
+        matchup_frame_->notebook_1_pane_1, wxID_ANY, wxString(name_display));
+    name_label->SetFont(wxFont(18, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL,
+                               wxFONTWEIGHT_NORMAL, 0, wxT("")));
+    labels_sizer->Add(name_label, 0, wxALIGN_CENTER_VERTICAL, 0);
+    wxStaticText *team_label =
+        new wxStaticText(matchup_frame_->notebook_1_pane_1, wxID_ANY,
+                         wxString(description.team));
+    team_label->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL,
+                               wxFONTWEIGHT_NORMAL, 0, wxT("")));
+    labels_sizer->Add(team_label, 0, wxALIGN_CENTER_VERTICAL, 0);
+    wxStaticText *position_label =
+        new wxStaticText(matchup_frame_->notebook_1_pane_1, wxID_ANY,
+                         wxString("- " + description.positions));
+    position_label->SetFont(wxFont(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL,
+                                   wxFONTWEIGHT_NORMAL, 0, wxT("")));
+    labels_sizer->Add(position_label, 0, wxALIGN_CENTER_VERTICAL, 0);
+
+    wxStaticLine *separator_line =
+        new wxStaticLine(matchup_frame_->notebook_1_pane_1, wxID_ANY);
+    roster_member_sizer->Add(separator_line, 0, wxEXPAND, 0);
+    roster_member_sizer->Layout();
+    matchup_frame_->roster_list_sizer->Layout();
+
+  }
+  this->GetTopWindow()->Layout();
 }
 
 void FantasyApp::DisplayLoginErrorLabel(bool show) {

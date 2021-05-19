@@ -76,9 +76,9 @@ public:
 
     MatchupFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
 
-private:
+// private:
 
-protected:
+// protected:
     // begin wxGlade: MatchupFrame::attributes
     wxNotebook* roster_tab;
     wxPanel* notebook_1_pane_1;

@@ -118,6 +118,32 @@ FantasyServiceClient::GetPlayerDescription(const std::string &first_name,
   return member;
 }
 
+fantasy_ball::TournamentManager::RosterMember
+FantasyServiceClient::GetPlayerDescription(int player_id) {
+  playerteamservice::PlayerId req;
+  playerteamservice::PlayerDescription result;
+  grpc::ClientContext context;
+
+  if (player_id < 1) {
+    return {};
+  }
+  req.set_id(player_id);
+  grpc::Status status =
+      player_stub_->GetPlayerDescriptionForId(&context, req, &result);
+
+  fantasy_ball::TournamentManager::RosterMember member = {};
+  if (!status.ok()) {
+    return member;
+  }
+  member.first_name = result.first_name();
+  member.last_name = result.last_name();
+  member.player_id = result.player_id();
+  member.team = result.team();
+  member.team_id = result.team_id();
+  member.positions = result.positions();
+  return member;
+}
+
 int FantasyServiceClient::CreateLeague(const std::string &token,
                                        const std::string &league_name) {
   leagueservice::CreateLeagueRequest req;
@@ -153,5 +179,43 @@ void FantasyServiceClient::MakeDraftPick(const std::string &token,
   if (!status.ok()) {
     return;
   }
+}
+
+void FantasyServiceClient::AddPlayerToFetchBatch(
+    int player_id, const std::string &fetch_date,
+    const std::string &season_start) {
+  playerteamservice::AddPlayerRequest req;
+  playerteamservice::DefaultResponse result;
+  grpc::ClientContext context;
+
+  if (player_id == 0 || fetch_date.empty()) {
+    return;
+  }
+  req.mutable_player_description()->set_player_id(player_id);
+  req.mutable_config()->set_date(fetch_date);
+  req.mutable_config()->set_season_start(season_start);
+  grpc::Status status = player_stub_->AddPlayerToFetch(&context, req, &result);
+}
+
+playerteamservice::LogsForConfigResponse
+FantasyServiceClient::GetLogsForConfig(const std::string &fetch_date,
+                                       const std::string &season_start) {
+  if (fetch_date.empty()) {
+    return {};
+  }
+
+  playerteamservice::LogsForConfigRequest req;
+  playerteamservice::LogsForConfigResponse result;
+  grpc::ClientContext context;
+
+  req.mutable_config()->set_date(fetch_date);
+  req.mutable_config()->set_season_start(season_start);
+  grpc::Status status =
+      player_stub_->FetchLogsForConfig(&context, req, &result);
+
+  if (!status.ok()) {
+    return {};
+  }
+  return result;
 }
 } // namespace fantasy_ball
