@@ -69,6 +69,7 @@ public:
     std::string team;
     int player_id;
     int team_id;
+    std::string positions;
   };
 
   // Contains a short description of a player.

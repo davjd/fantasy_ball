@@ -37,6 +37,8 @@ bool AccountManager::HasSession() {
   return config_->Exists("active_session_id");
 }
 
+bool AccountManager::HasALeague() { return config_->Exists("league_id"); }
+
 void AccountManager::SaveToken(const std::string &token) {
   config_->Write("active_session_id", wxString(token));
 }
@@ -44,6 +46,21 @@ void AccountManager::SaveToken(const std::string &token) {
 void AccountManager::ResetToken() { config_->DeleteAll(); }
 
 wxConfig *AccountManager::GetConfig() { return config_.get(); }
+
+void AccountManager::SaveLeague(int league_id) {
+  config_->Write("league_id", league_id);
+}
+
+int AccountManager::GetLeague() { return config_->Read("league_id", (int)0); }
+
+void AccountManager::SetRoster(
+    const std::vector<leagueservice::RosterInfo> &roster) {
+  current_roster_ = roster;
+}
+
+std::vector<leagueservice::RosterInfo> AccountManager::GetRoster() {
+  return current_roster_;
+}
 
 std::pair<fantasy_ball::TournamentManager::UserRoster,
           fantasy_ball::TournamentManager::UserRoster>
